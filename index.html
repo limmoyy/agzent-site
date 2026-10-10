@@ -9,187 +9,303 @@
 <meta property="og:description" content="Odoo ERP implementation, customization, migration, and support for businesses in Indonesia.">
 <meta property="og:url" content="https://agzent.my.id/">
 <meta property="og:type" content="website">
-<meta name="theme-color" content="#0b2530">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230b2530'/><path d='M8 23 16 8l8 15' stroke='%232dd4bf' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/><circle cx='16' cy='18' r='2.6' fill='%23fbbf24'/></svg>">
+<meta name="theme-color" content="#2a2220">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='10' fill='%232a2220'/><path d='M9 23 16 9l7 14' stroke='%23E0D1D1' stroke-width='3.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/><circle cx='16' cy='18.5' r='2.8' fill='%23D9FF57'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f6f8f7;--surface:#ffffff;--surface-2:#eef3f1;--ink:#0d1b1e;--muted:#56666a;--line:#dde5e2;
-  --brand:#0b2530;--accent:#0d9488;--accent-ink:#ffffff;--accent-soft:#dff3ef;--gold:#d97706;--gold-soft:#fdf1dc;
-  --radius:16px;--max:1140px;
-  --shadow:0 1px 2px rgba(13,27,30,.05),0 8px 24px -12px rgba(13,27,30,.12);
-}
-@media (prefers-color-scheme:dark){
-  :root{--bg:#081316;--surface:#0f1d21;--surface-2:#132429;--ink:#e5eeec;--muted:#93a6a8;--line:#1f3237;
-    --brand:#0f1d21;--accent:#2dd4bf;--accent-ink:#04201c;--accent-soft:#0f302d;--gold:#fbbf24;--gold-soft:#2b220e;
-    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.5);}
+  --mocha:#7A6A66;--blush:#E0D1D1;
+  --cream:#F8F3F1;--paper:#FFFDFC;--espresso:#2A2220;--ink:#231B19;
+  --lime:#D9FF57;--lime-ink:#1E2400;
+  --muted:#6E5F5B;--line:rgba(122,106,102,.24);
+  --r:26px;--max:1180px;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;
+  --ease:cubic-bezier(.2,.8,.2,1);
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:76px}
-body{margin:0;background:var(--bg);color:var(--ink);
-  font:16px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-a{color:var(--accent)}
-img,svg{display:block}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+body{margin:0;background:var(--cream);color:var(--ink);font:16px/1.65 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:100;opacity:.07;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+a{color:inherit}
+svg{display:block}
 .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
-h1,h2,h3{letter-spacing:-.02em;line-height:1.15}
-h2{font-size:clamp(26px,3.6vw,38px);margin:10px 0 12px}
-.kicker{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
-.sub{color:var(--muted);max-width:62ch;margin:0 0 36px;font-size:17px}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:11px;font-weight:650;
-  text-decoration:none;font-size:15px;border:1px solid transparent;cursor:pointer;font-family:inherit}
-.btn.primary{background:var(--accent);color:var(--accent-ink)}
-.btn.primary:hover{filter:brightness(1.07)}
-.btn.ghost{border-color:var(--line);color:var(--ink);background:var(--surface)}
-.btn.light{background:#fff;color:#0b2530}
+h1,h2,h3{font-family:var(--display);letter-spacing:-.035em;line-height:1;margin:0}
+h2{font-size:clamp(38px,6.4vw,76px);font-weight:800}
+h3{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.tag{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;letter-spacing:.02em;
+  padding:7px 14px;border-radius:99px;background:var(--paper);border:1px solid var(--line)}
+.tag i{width:8px;height:8px;border-radius:50%;background:var(--mocha)}
+.sub{color:var(--muted);font-size:18px;max-width:56ch;margin:18px 0 0}
+.head{display:flex;justify-content:space-between;align-items:end;gap:24px;flex-wrap:wrap;margin-bottom:48px}
+.head .tag{margin-bottom:20px}
 
-/* header */
-header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 86%,transparent);
-  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.top .wrap{display:flex;align-items:center;justify-content:space-between;height:66px;gap:20px}
-.logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:800;font-size:20px;letter-spacing:-.03em}
-.logo svg{width:32px;height:32px}
-.logo small{display:block;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.02em;margin-top:-4px}
-nav.main{display:flex;gap:24px;font-size:15px}
-nav.main a{color:var(--muted);text-decoration:none}
-nav.main a:hover{color:var(--ink)}
-@media (max-width:880px){nav.main{display:none}}
-@media (max-width:420px){.top .btn{padding:9px 12px;font-size:14px}}
+/* buttons */
+.btn{position:relative;display:inline-flex;align-items:center;gap:10px;padding:15px 24px;border-radius:99px;font:700 15px var(--body);
+  text-decoration:none;border:0;cursor:pointer;overflow:hidden;transition:transform .35s var(--ease),box-shadow .35s var(--ease),background .35s,color .35s}
+.btn svg{width:18px;height:18px;transition:transform .35s var(--ease)}
+.btn:hover svg{transform:translateX(4px) rotate(-45deg)}
+.btn:hover{transform:translateY(-2px)}
+.btn.lime{background:var(--lime);color:var(--lime-ink)}
+.btn.lime:hover{box-shadow:0 10px 30px -8px rgba(160,200,30,.7)}
+.btn.dark{background:var(--espresso);color:var(--cream)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+.btn.ghost:hover{background:var(--ink);color:var(--cream)}
+.btn::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);
+  transform:translateX(-120%);transition:transform .7s var(--ease)}
+.btn:hover::after{transform:translateX(120%)}
+
+/* nav */
+.nav{position:fixed;top:14px;left:0;right:0;z-index:50;pointer-events:none}
+.nav .wrap{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.pillbar{pointer-events:auto;display:flex;align-items:center;gap:6px;padding:6px;border-radius:99px;
+  background:rgba(255,253,252,.72);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);border:1px solid var(--line);
+  box-shadow:0 8px 30px -14px rgba(42,34,32,.35)}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none;font:800 21px var(--display);letter-spacing:-.04em;padding:0 14px 0 4px}
+.logo svg{width:36px;height:36px;transition:transform .6s var(--ease)}
+.logo:hover svg{transform:rotate(-12deg) scale(1.06)}
+.links{display:flex;gap:2px}
+.links a{font-size:14px;font-weight:600;text-decoration:none;padding:9px 15px;border-radius:99px;transition:background .25s}
+.links a:hover{background:var(--blush)}
+.nav .btn{pointer-events:auto;padding:12px 20px}
+@media (max-width:900px){.links{display:none}}
 
 /* hero */
-.hero{padding:72px 0 64px}
-.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
-@media (max-width:920px){.hero .wrap{grid-template-columns:1fr;gap:40px}}
-.pill{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:650;color:var(--ink);
-  background:var(--surface);border:1px solid var(--line);padding:5px 12px 5px 6px;border-radius:99px}
-.pill b{background:var(--gold-soft);color:var(--gold);padding:2px 8px;border-radius:99px;font-size:12px}
-h1{font-size:clamp(36px,5.6vw,60px);margin:20px 0 18px;letter-spacing:-.035em;line-height:1.05}
-h1 em{font-style:normal;color:var(--accent)}
-.lead{font-size:clamp(17px,2vw,19px);color:var(--muted);max-width:54ch;margin:0}
-.hero .cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
-.facts{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:30px;font-size:14px;color:var(--muted)}
-.facts span{display:flex;align-items:center;gap:7px}
-.facts svg{width:16px;height:16px;color:var(--accent)}
+.hero{position:relative;min-height:min(100svh,940px);display:flex;align-items:center;padding:130px 0 90px;overflow:hidden}
+.blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.85;animation:float 18s ease-in-out infinite;pointer-events:none}
+.b1{width:520px;height:520px;background:var(--blush);top:-120px;right:-80px}
+.b2{width:380px;height:380px;background:#c7b2ad;bottom:-120px;left:-100px;animation-delay:-6s;opacity:.6}
+.b3{width:240px;height:240px;background:var(--lime);top:38%;right:30%;animation-delay:-11s;opacity:.35}
+@keyframes float{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(40px,-30px) scale(1.08)}66%{transform:translate(-30px,25px) scale(.94)}}
+.hero .wrap{position:relative;display:grid;grid-template-columns:1.15fr .85fr;gap:56px;align-items:center;width:100%}
+@media (max-width:980px){.hero .wrap{grid-template-columns:1fr}}
+h1{font-size:clamp(52px,8.6vw,112px);font-weight:800;letter-spacing:-.05em;line-height:.95;margin:26px 0 26px}
+h1 .w{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.1em;margin-bottom:-.1em}
+h1 .w>span{display:inline-block;transform:translateY(110%);animation:rise .9s var(--ease) forwards;animation-delay:calc(var(--i)*90ms + 150ms)}
+@keyframes rise{to{transform:none}}
+h1 .hl{position:relative;color:var(--mocha);font-style:italic;font-weight:700}
+h1 .hl svg{position:absolute;left:-2%;bottom:.02em;width:104%;height:.3em;overflow:visible;z-index:-1}
+h1 .hl path{stroke:var(--lime);stroke-width:16;fill:none;stroke-linecap:round;stroke-dasharray:420;stroke-dashoffset:420;animation:draw 1s var(--ease) 1.1s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.hero .lead{font-size:clamp(17px,1.9vw,20px);color:var(--muted);max-width:50ch;margin:0;opacity:0;animation:fade .9s var(--ease) .8s forwards}
+.hero .cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px;opacity:0;animation:fade .9s var(--ease) 1s forwards}
+@keyframes fade{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.stickers{display:flex;flex-wrap:wrap;gap:10px;margin-top:34px}
+.sticker{font-size:13px;font-weight:700;padding:8px 14px;border-radius:12px;background:var(--paper);border:1.5px solid var(--ink);
+  box-shadow:3px 3px 0 var(--ink);transform:rotate(var(--rot));opacity:0;animation:pop .6s var(--ease) forwards;animation-delay:var(--d)}
+.sticker:nth-child(2){background:var(--blush)}
+.sticker:nth-child(3){background:var(--lime)}
+@keyframes pop{from{opacity:0;transform:scale(.6) rotate(0)}to{opacity:1;transform:scale(1) rotate(var(--rot))}}
 
 /* flow card */
-.flow{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:var(--shadow)}
-.flow-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-.flow-head b{font-size:15px}
-.flow-head span{white-space:nowrap;font-size:12px;color:var(--muted);background:var(--surface-2);padding:3px 9px;border-radius:99px}
-.steps-flow{display:grid;gap:10px;position:relative}
-.sf{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;padding:12px 14px;border-radius:13px;
-  background:var(--surface-2);position:relative}
-.sf .ic{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
-.sf .ic svg{width:22px;height:22px}
-.sf b{display:block;font-size:15px}
-.sf small{color:var(--muted);font-size:13px}
-.sf .mod{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--gold);background:var(--gold-soft);padding:3px 8px;border-radius:6px}
-.sf:not(:last-child)::after{content:"";position:absolute;left:35px;bottom:-11px;width:2px;height:12px;background:var(--line)}
-@media (max-width:520px){.sf{grid-template-columns:40px 1fr}.sf .ic{width:40px;height:40px}.sf .mod{grid-column:2;justify-self:start}.sf:not(:last-child)::after{left:33px}}
-.flow-foot{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line);display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
-.flow-foot i{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.flowwrap{position:relative;opacity:0;animation:fade 1s var(--ease) .6s forwards}
+.flow{position:relative;background:var(--espresso);color:var(--cream);border-radius:30px;padding:24px;box-shadow:0 30px 60px -30px rgba(42,34,32,.6);transform:rotate(1.5deg)}
+.flow-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+.flow-top b{font:700 17px var(--display);letter-spacing:-.02em}
+.live{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--lime);white-space:nowrap}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--lime);animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(217,255,87,.7)}100%{box-shadow:0 0 0 10px rgba(217,255,87,0)}}
+.fs{display:grid;grid-template-columns:46px 1fr auto;gap:14px;align-items:center;padding:13px 14px;border-radius:18px;
+  border:1px solid rgba(224,209,209,.12);margin-bottom:10px;transition:background .5s var(--ease),transform .5s var(--ease),border-color .5s}
+.fs .ic{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:rgba(224,209,209,.1);color:var(--blush);transition:background .5s,color .5s}
+.fs .ic svg{width:22px;height:22px}
+.fs b{display:block;font-size:15px}
+.fs small{color:#b9aaa6;font-size:13px}
+.fs .m{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:4px 9px;border-radius:8px;background:rgba(224,209,209,.12);color:var(--blush);transition:background .5s,color .5s}
+.fs.on{background:rgba(224,209,209,.08);border-color:rgba(217,255,87,.5);transform:translateX(-6px)}
+.fs.on .ic,.fs.on .m{background:var(--lime);color:var(--lime-ink)}
+.fs.done .ic{color:var(--lime)}
+.flow-foot{display:flex;align-items:center;gap:14px;font-size:14px;color:#cdbfbb;margin-top:6px;padding-top:14px;border-top:1px dashed rgba(224,209,209,.2)}
+.bar{flex:1;height:6px;border-radius:9px;background:rgba(224,209,209,.15);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--lime);border-radius:9px;transition:width .6s var(--ease)}
+@media (min-width:981px){.flow-foot{padding-left:64px}}
+@media (max-width:520px){.fs{grid-template-columns:40px 1fr}.fs .ic{width:40px;height:40px}.fs .m{grid-column:2;justify-self:start}}
+.spin{position:absolute;width:128px;height:128px;left:-70px;bottom:-72px;z-index:2;border-radius:50%;background:var(--paper);border:1.5px solid var(--ink);box-shadow:4px 4px 0 var(--ink)}
+.spin>svg{width:100%;height:100%;animation:rot 16s linear infinite}
+.spin text{font:800 10px var(--display);letter-spacing:.14em;fill:var(--ink)}
+.spin .core{position:absolute;inset:34px;border-radius:50%;background:var(--lime);display:grid;place-items:center;border:1.5px solid var(--ink)}
+.spin .core svg{width:26px;height:26px;color:var(--ink)}
+@keyframes rot{to{transform:rotate(360deg)}}
+@media (max-width:980px){.spin{left:auto;right:-4px;bottom:-78px;width:112px;height:112px}.spin .core{inset:29px}.flowwrap{margin-bottom:40px}}
 
-/* strip */
-.strip{border-block:1px solid var(--line);background:var(--surface)}
-.strip .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px 28px;padding-block:20px;font-size:14px;color:var(--muted)}
-.strip b{color:var(--ink)}
+/* marquee */
+.marquee{background:var(--espresso);color:var(--blush);padding:22px 0;overflow:hidden;transform:rotate(-1.5deg);margin:10px -20px 0;position:relative;z-index:3}
+.track{display:flex;gap:34px;width:max-content;animation:mq 30s linear infinite}
+.marquee:hover .track{animation-play-state:paused}
+.track span{font:800 clamp(28px,4vw,46px) var(--display);letter-spacing:-.03em;white-space:nowrap;display:flex;align-items:center;gap:34px}
+.track span:nth-child(even){color:transparent;-webkit-text-stroke:1.5px var(--blush)}
+.track span::after{content:"✦";color:var(--lime);font-size:.6em;-webkit-text-stroke:0}
+@keyframes mq{to{transform:translateX(-50%)}}
 
-section{padding:88px 0}
-section.alt{background:var(--surface);border-block:1px solid var(--line)}
+section{padding:120px 0;position:relative}
 
-/* services */
-.grid{display:grid;gap:18px;grid-template-columns:repeat(3,1fr)}
-@media (max-width:920px){.grid{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:600px){.grid{grid-template-columns:1fr}}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px}
-section.alt .card{background:var(--bg)}
-.card .ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);margin-bottom:16px}
-.card .ic svg{width:22px;height:22px}
-.card h3{margin:0 0 8px;font-size:18px}
-.card p{margin:0;color:var(--muted);font-size:15px}
-.card ul{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:6px;font-size:14px}
-.card li{display:flex;gap:8px;color:var(--ink)}
-.card li::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-top:9px}
+/* reveal */
+[data-r]{opacity:0;transform:translateY(40px);transition:opacity .9s var(--ease),transform .9s var(--ease);transition-delay:calc(var(--d,0)*80ms)}
+[data-r].in{opacity:1;transform:none}
+
+/* bento */
+.bento{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}
+.bx{position:relative;border-radius:var(--r);padding:30px;overflow:hidden;min-height:260px;display:flex;flex-direction:column}
+.bx.in{transition:transform .5s var(--ease),box-shadow .5s var(--ease)}
+.bx:hover{box-shadow:0 30px 50px -30px rgba(42,34,32,.55)}
+.bx .ic{width:54px;height:54px;border-radius:17px;display:grid;place-items:center;margin-bottom:auto;transition:transform .5s var(--ease)}
+.bx:hover .ic{transform:rotate(-10deg) scale(1.1)}
+.bx .ic svg{width:26px;height:26px}
+.bx h3{margin:26px 0 10px}
+.bx p{margin:0;font-size:15px;opacity:.85}
+.bx ul{list-style:none;padding:0;margin:16px 0 0;display:flex;flex-wrap:wrap;gap:6px}
+.bx li{font-size:12.5px;font-weight:600;padding:5px 11px;border-radius:99px}
+.c1{grid-column:span 3;background:var(--mocha);color:var(--cream)}
+.c1 .ic{background:var(--lime);color:var(--lime-ink)} .c1 li{background:rgba(248,243,241,.14)}
+.c2{grid-column:span 3;background:var(--blush)}
+.c2 .ic{background:var(--espresso);color:var(--blush)} .c2 li{background:rgba(42,34,32,.08)}
+.c3{grid-column:span 2;background:var(--paper);border:1px solid var(--line)}
+.c3 .ic{background:var(--blush);color:var(--espresso)}
+.c4{grid-column:span 2;background:var(--lime);color:var(--lime-ink)}
+.c4 .ic{background:var(--espresso);color:var(--lime)}
+.c5{grid-column:span 2;background:var(--espresso);color:var(--cream)}
+.c5 .ic{background:var(--blush);color:var(--espresso)}
+.c6{grid-column:span 6;background:var(--paper);border:1px solid var(--line);min-height:auto;flex-direction:row;align-items:center;gap:28px}
+.c6 .ic{background:var(--mocha);color:var(--cream);margin:0;flex:none}
+.c6 h3{margin:0 0 6px}
+.c6 .big{margin-left:auto;flex:none;font:800 clamp(40px,6vw,72px) var(--display);letter-spacing:-.05em;color:var(--blush);-webkit-text-stroke:1.5px var(--mocha);line-height:1}
+@media (max-width:900px){.c1,.c2,.c5{grid-column:span 6}.c3,.c4{grid-column:span 3}.c6 .big{display:none}}
+@media (max-width:600px){.bento>*{grid-column:span 6!important}.c6{flex-direction:column;align-items:flex-start}}
 
 /* modules */
-.mods{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
-.mod-t{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:14px 16px;font-weight:600;font-size:15px}
-.mod-t i{width:10px;height:10px;border-radius:3px;flex:none}
-.lokal{margin-top:26px;display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center;background:var(--gold-soft);
-  border-radius:var(--radius);padding:22px 24px}
-.lokal .flag{width:44px;height:30px;border-radius:5px;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
-.lokal .flag div{height:50%}
-.lokal b{display:block;margin-bottom:4px}
-.lokal p{margin:0;color:var(--muted);font-size:15px}
-@media (max-width:600px){.lokal{grid-template-columns:1fr}}
+.mods-sec{background:var(--blush)}
+.mods-sec .tag{background:var(--cream)}
+.mods{display:flex;flex-wrap:wrap;gap:12px}
+.chip{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border-radius:99px;background:var(--paper);font:700 18px var(--display);letter-spacing:-.02em;
+  border:1.5px solid transparent;cursor:default}
+.chip.in{transition:transform .35s var(--ease),background .35s,color .35s,border-color .35s;transition-delay:0s}
+.chip i{width:10px;height:10px;border-radius:50%;background:var(--mocha);transition:transform .35s var(--ease),background .35s}
+.chip:hover{transform:translateY(-4px) rotate(-2deg);background:var(--espresso);color:var(--cream);border-color:var(--espresso)}
+.chip:hover i{background:var(--lime);transform:scale(1.5)}
+.id-card{margin-top:44px;display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:center;background:var(--espresso);color:var(--cream);border-radius:var(--r);padding:30px}
+.flag{width:70px;height:48px;border-radius:10px;overflow:hidden;animation:wave 3s ease-in-out infinite;transform-origin:left center}
+.flag div{height:50%}
+@keyframes wave{0%,100%{transform:skewY(0)}50%{transform:skewY(-4deg)}}
+.id-card b{font:700 24px var(--display);letter-spacing:-.02em;display:block;margin-bottom:6px}
+.id-card p{margin:0;color:#cdbfbb}
+@media (max-width:600px){.id-card{grid-template-columns:1fr}}
 
 /* process */
-.proc{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;counter-reset:p}
-@media (max-width:980px){.proc{grid-template-columns:1fr 1fr}}
-@media (max-width:560px){.proc{grid-template-columns:1fr}}
-.ph{counter-increment:p;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:22px;position:relative}
-.ph::before{content:"0" counter(p);font-size:13px;font-weight:800;color:var(--accent);letter-spacing:.06em}
-.ph h3{font-size:17px;margin:10px 0 6px}
-.ph p{margin:0;color:var(--muted);font-size:14px}
-.ph .dur{display:inline-block;margin-top:14px;font-size:12px;font-weight:650;color:var(--muted);background:var(--surface-2);padding:3px 9px;border-radius:99px}
+.proc{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
+.proc::before{content:"";position:absolute;top:44px;left:44px;right:calc((100% - 64px)/5 - 44px);height:2px;background:var(--line)}
+.proc .line{position:absolute;top:44px;left:44px;height:2px;width:0;background:var(--mocha);transition:width 2.2s var(--ease) .3s}
+.proc.in .line{width:calc(80% + 12.8px)}
+.ph .n{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;background:var(--cream);border:2px solid var(--mocha);
+  font:800 30px var(--display);color:var(--mocha);position:relative;z-index:1;transition:background .4s,color .4s,transform .4s var(--ease),border-color .4s}
+.ph:hover .n{background:var(--lime);color:var(--lime-ink);border-color:var(--ink);transform:rotate(-8deg) scale(1.05)}
+.ph h3{font-size:20px;margin:22px 0 8px}
+.ph p{margin:0;color:var(--muted);font-size:14.5px}
+.ph .dur{display:inline-block;margin-top:14px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:99px;background:var(--blush)}
+@media (max-width:980px){.proc{grid-template-columns:1fr;gap:28px}.proc::before,.proc .line{display:none}
+  .ph{display:grid;grid-template-columns:72px 1fr;gap:0 20px;align-items:start}.ph .n{width:72px;height:72px;font-size:24px;grid-row:span 3}.ph h3{margin-top:8px}.ph .dur{justify-self:start}}
 
 /* industries */
-.ind{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
-.ind .card h3{font-size:17px}
-.ind .card .use{margin-top:12px;font-size:13px;color:var(--accent);font-weight:650}
+.ind{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media (max-width:980px){.ind{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.ind{grid-template-columns:1fr}}
+.icard{position:relative;border-radius:var(--r);padding:28px;min-height:300px;display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);overflow:hidden}
+.icard.in{transition:color .5s}
+.icard::before{content:"";position:absolute;inset:0;background:var(--mocha);transform:translateY(101%);transition:transform .6s var(--ease);z-index:0}
+.icard:hover::before{transform:none}
+.icard:hover{color:var(--cream)}
+.icard>*{position:relative;z-index:1}
+.icard .emo{font-size:40px;line-height:1;margin-bottom:auto;transition:transform .5s var(--ease);display:inline-block;align-self:flex-start}
+.icard:hover .emo{transform:scale(1.2) rotate(-10deg)}
+.icard h3{margin:24px 0 10px}
+.icard p{margin:0;font-size:14.5px;opacity:.85}
+.icard .use{margin-top:16px;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--mocha);transition:color .5s}
+.icard:hover .use{color:var(--lime)}
 
 /* packages */
-.pk{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:stretch}
-@media (max-width:920px){.pk{grid-template-columns:1fr}}
-.pkc{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:28px;display:flex;flex-direction:column}
-.pkc.feat{border:2px solid var(--accent);background:var(--surface);position:relative}
-.pkc.feat::before{content:"Most popular";position:absolute;top:-12px;left:24px;font-size:12px;font-weight:700;
-  background:var(--accent);color:var(--accent-ink);padding:3px 10px;border-radius:99px}
-.pkc h3{margin:0;font-size:20px}
-.pkc .for{color:var(--muted);font-size:14px;margin:6px 0 18px}
-.pkc ul{list-style:none;padding:0;margin:0 0 24px;display:grid;gap:10px;font-size:15px;flex:1}
-.pkc li{display:grid;grid-template-columns:20px 1fr;gap:8px}
-.pkc li svg{width:18px;height:18px;color:var(--accent);margin-top:3px}
+.pk-sec{background:var(--espresso);color:var(--cream);border-radius:48px 48px 0 0}
+.pk-sec .tag,.faq-sec .tag{background:rgba(224,209,209,.1);border-color:rgba(224,209,209,.2);color:var(--blush)}
+.pk-sec .tag i,.faq-sec .tag i{background:var(--lime)}
+.pk-sec .sub{color:#b9aaa6}
+.pk{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}
+@media (max-width:980px){.pk{grid-template-columns:1fr}}
+.pkc{position:relative;border-radius:var(--r);padding:32px;display:flex;flex-direction:column;background:rgba(224,209,209,.06);border:1px solid rgba(224,209,209,.14)}
+.pkc.in{transition:transform .5s var(--ease),border-color .5s;transition-delay:0s}
+.pkc:hover{transform:translateY(-8px);border-color:rgba(224,209,209,.4)}
+.pkc.feat{background:var(--blush);color:var(--ink);border-color:var(--blush)}
+.pkc .badge{position:absolute;top:-14px;right:22px;background:var(--lime);color:var(--lime-ink);font-size:12px;font-weight:800;padding:6px 12px;border-radius:99px;border:1.5px solid var(--ink);
+  animation:bob 2.8s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:rotate(4deg) translateY(0)}50%{transform:rotate(-2deg) translateY(-4px)}}
+.pkc h3{font-size:32px;font-weight:800}
+.pkc .for{opacity:.75;font-size:14.5px;margin:10px 0 24px;min-height:44px}
+.pkc ul{list-style:none;padding:0;margin:0 0 28px;display:grid;gap:12px;font-size:15px;flex:1;align-content:start}
+.pkc li{display:grid;grid-template-columns:22px 1fr;gap:10px}
+.pkc li svg{width:20px;height:20px;margin-top:2px;color:var(--lime)}
+.pkc.feat li svg{color:var(--mocha)}
 .pkc .btn{justify-content:center}
+.pkc:not(.feat) .btn.ghost{color:var(--cream);border-color:rgba(224,209,209,.5)}
+.pkc:not(.feat) .btn.ghost:hover{background:var(--cream);color:var(--ink)}
 
 /* faq */
-.faq{max-width:820px;display:grid;gap:12px}
-details{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:0 20px}
-summary{cursor:pointer;list-style:none;padding:18px 0;font-weight:650;display:flex;justify-content:space-between;gap:16px}
+.faq-sec{background:var(--espresso);color:var(--cream);padding-top:40px}
+.faq-grid{display:grid;grid-template-columns:.8fr 1.2fr;gap:48px}
+@media (max-width:900px){.faq-grid{grid-template-columns:1fr}}
+details{border-bottom:1px solid rgba(224,209,209,.18)}
+summary{cursor:pointer;list-style:none;padding:24px 0;font:700 20px var(--display);letter-spacing:-.02em;display:flex;justify-content:space-between;gap:20px;align-items:center}
 summary::-webkit-details-marker{display:none}
-summary::after{content:"+";font-size:22px;line-height:1;color:var(--accent);font-weight:400}
-details[open] summary::after{content:"–"}
-details p{margin:0 0 18px;color:var(--muted)}
+summary .pl{flex:none;width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(224,209,209,.4);display:grid;place-items:center;transition:transform .4s var(--ease),background .4s,color .4s,border-color .4s}
+summary .pl svg{width:16px;height:16px}
+summary:hover .pl{border-color:var(--lime)}
+details[open] summary .pl{transform:rotate(45deg);background:var(--lime);color:var(--lime-ink);border-color:var(--lime)}
+details p{margin:0 0 24px;color:#cdbfbb;max-width:62ch;animation:fade .5s var(--ease)}
 
 /* contact */
-.contact{background:var(--brand);color:#e6f2f0;border-radius:26px;padding:clamp(28px,5vw,56px);
-  display:grid;grid-template-columns:1fr 1fr;gap:40px}
-@media (max-width:860px){.contact{grid-template-columns:1fr}}
-.contact h2{color:#fff}
-.contact .kicker{color:#5eead4}
-.contact p{color:#a9c1c0}
-.contact .mail{display:inline-flex;align-items:center;gap:10px;color:#fff;font-weight:650;font-size:18px;text-decoration:none;margin-top:8px}
-.contact .mail svg{width:22px;height:22px;color:#5eead4}
-form{display:grid;gap:12px}
-form label{font-size:13px;font-weight:600;color:#cfe1df;display:grid;gap:6px}
-form input,form select,form textarea{font:inherit;font-size:15px;color:#fff;background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:11px 13px;width:100%}
-form select option{color:#0d1b1e}
-form textarea{min-height:110px;resize:vertical}
-form input:focus,form select:focus,form textarea:focus{outline:2px solid #2dd4bf;outline-offset:1px;border-color:transparent}
-form .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ct-sec{background:var(--espresso);padding:40px 0 120px}
+.contact{position:relative;overflow:hidden;background:var(--blush);border-radius:40px;padding:clamp(28px,5vw,64px);display:grid;grid-template-columns:1fr 1fr;gap:48px}
+@media (max-width:900px){.contact{grid-template-columns:1fr}}
+.contact>.blob{opacity:.55}
+.contact>div:not(.blob),.contact>form{position:relative}
+.contact h2{font-size:clamp(44px,6.4vw,84px)}
+.contact h2 em{font-style:italic;color:var(--mocha)}
+.contact p{color:var(--muted);font-size:17px;margin:20px 0 26px}
+.contact .tag{background:var(--cream)}
+.mail{display:inline-flex;align-items:center;gap:12px;font:700 22px var(--display);text-decoration:none;padding-bottom:4px;border-bottom:2px solid var(--ink);transition:gap .3s var(--ease)}
+.mail:hover{gap:18px}
+.mail svg{width:24px;height:24px}
+form{display:grid;gap:14px;background:var(--paper);border-radius:28px;padding:26px;box-shadow:0 30px 60px -40px rgba(42,34,32,.6)}
+form label{font-size:13px;font-weight:700;display:grid;gap:7px}
+form input,form select,form textarea{font:inherit;font-size:15px;font-weight:500;color:var(--ink);background:var(--cream);border:1.5px solid transparent;border-radius:14px;padding:13px 15px;width:100%;
+  transition:border-color .3s,background .3s}
+form textarea{min-height:120px;resize:vertical}
+form input:focus,form select:focus,form textarea:focus{outline:0;border-color:var(--mocha);background:var(--paper)}
+form .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media (max-width:520px){form .row{grid-template-columns:1fr}}
-form .note{font-size:12px;color:#86a3a2;margin:0}
+form .note{font-size:12px;color:var(--muted);margin:0}
 
-footer{padding:40px 0 48px;color:var(--muted);font-size:14px}
-footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px 32px}
-footer a{color:var(--muted)}
-footer .tm{flex-basis:100%;font-size:12px;opacity:.85}
+/* footer */
+footer{background:var(--espresso);color:#b9aaa6;padding:0 0 36px;overflow:hidden}
+.wordmark{font:800 clamp(90px,23vw,330px) var(--display);letter-spacing:-.07em;line-height:.8;color:transparent;-webkit-text-stroke:1.5px rgba(224,209,209,.35);
+  text-align:center;margin:0 0 30px;user-select:none;transition:color .8s}
+.wordmark:hover{color:var(--mocha)}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px 32px;font-size:14px}
+footer a{color:var(--blush)}
+footer .tm{flex-basis:100%;font-size:12px;opacity:.7}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+  [data-r]{opacity:1;transform:none}
+}
 </style>
 </head>
 <body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
     <symbol id="i-cart" viewBox="0 0 24 24"><path d="M3 4h2l2.2 10.5a2 2 0 0 0 2 1.5h7.6a2 2 0 0 0 2-1.5L20 8H6.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1.4" fill="currentColor"/><circle cx="17" cy="20" r="1.4" fill="currentColor"/></symbol>
     <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8zM3 8l9 5 9-5M12 13v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
     <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
@@ -201,137 +317,152 @@ footer .tm{flex-basis:100%;font-size:12px;opacity:.85}
     <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.8.7 3 2.5 3.5 5.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
     <symbol id="i-life" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 6l3.5 3.5M18 6l-3.5 3.5M6 18l3.5-3.5M18 18l-3.5-3.5" stroke="currentColor" stroke-width="2"/></symbol>
     <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2c.6 5.4 4.6 9.4 10 10-5.4.6-9.4 4.6-10 10-.6-5.4-4.6-9.4-10-10 5.4-.6 9.4-4.6 10-10z" fill="currentColor"/></symbol>
   </defs>
 </svg>
 
-<header class="top">
+<header class="nav">
   <div class="wrap">
-    <a class="logo" href="#top" aria-label="Agzent home">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0b2530"/><path d="M8 23 16 8l8 15" stroke="#2dd4bf" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="18" r="2.6" fill="#fbbf24"/></svg>
-      <span>agzent<small>Odoo ERP Consulting</small></span>
-    </a>
-    <nav class="main" aria-label="Main navigation">
-      <a href="#services">Services</a>
-      <a href="#modules">Modules</a>
-      <a href="#process">Process</a>
-      <a href="#packages">Packages</a>
-      <a href="#faq">FAQ</a>
-    </nav>
-    <a class="btn primary" href="#contact">Free consultation</a>
+    <div class="pillbar">
+      <a class="logo" href="#top" aria-label="Agzent home">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="10" fill="#2a2220"/><path d="M9 23 16 9l7 14" stroke="#E0D1D1" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="18.5" r="2.8" fill="#D9FF57"/></svg>
+        agzent
+      </a>
+      <nav class="links" aria-label="Main navigation">
+        <a href="#services">Services</a>
+        <a href="#modules">Modules</a>
+        <a href="#process">Process</a>
+        <a href="#packages">Packages</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+    </div>
+    <a class="btn lime" href="#contact">Let's talk <svg><use href="#i-arrow"/></svg></a>
   </div>
 </header>
 
 <main id="top">
   <div class="hero">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
     <div class="wrap">
       <div>
-        <span class="pill"><b>Odoo ERP</b> Community &amp; Enterprise</span>
-        <h1>Odoo ERP that fits the way <em>your business</em> works.</h1>
-        <p class="lead">Agzent helps companies in Indonesia move sales, inventory, purchasing, manufacturing, and finance onto a single Odoo system, from process analysis until your team runs it confidently on its own.</p>
+        <span class="tag"><i></i>Odoo ERP consulting · Indonesia</span>
+        <h1>
+          <span class="w"><span style="--i:0">Your</span></span>
+          <span class="w"><span style="--i:1">whole</span></span>
+          <span class="w"><span style="--i:2">business,</span></span>
+          <span class="w"><span style="--i:3">one</span></span>
+          <span class="w"><span style="--i:4" class="hl">Odoo.<svg viewBox="0 0 200 20" preserveAspectRatio="none" aria-hidden="true"><path d="M3 14 C 50 4, 120 4, 197 12"/></svg></span></span>
+        </h1>
+        <p class="lead">Sales, stock, purchasing, production, and finance in one system, set up by people who speak both business and code. No more month-end Excel chaos.</p>
         <div class="cta">
-          <a class="btn primary" href="#contact">Book a consultation</a>
-          <a class="btn ghost" href="#services">See our services</a>
+          <a class="btn dark" href="#contact">Book a free consult <svg><use href="#i-arrow"/></svg></a>
+          <a class="btn ghost" href="#services">See what we do</a>
         </div>
-        <div class="facts">
-          <span><svg><use href="#i-check"/></svg>Indonesian tax localization</span>
-          <span><svg><use href="#i-check"/></svg>Cloud or your own server</span>
-          <span><svg><use href="#i-check"/></svg>Documentation in English &amp; Indonesian</span>
+        <div class="stickers">
+          <span class="sticker" style="--rot:-3deg;--d:1.3s">Community &amp; Enterprise</span>
+          <span class="sticker" style="--rot:2deg;--d:1.45s">🇮🇩 Tax-localized</span>
+          <span class="sticker" style="--rot:-1.5deg;--d:1.6s">Cloud or self-hosted</span>
         </div>
       </div>
 
-      <div class="flow" aria-label="Example of an integrated flow in Odoo">
-        <div class="flow-head"><b>One transaction, every module updated</b><span>example flow</span></div>
-        <div class="steps-flow">
-          <div class="sf"><div class="ic"><svg><use href="#i-cart"/></svg></div><div><b>Sales order confirmed</b><small>Prices &amp; discounts from the customer's pricelist</small></div><span class="mod">Sales</span></div>
-          <div class="sf"><div class="ic"><svg><use href="#i-box"/></svg></div><div><b>Stock reserved &amp; shipped</b><small>Picked from the nearest warehouse</small></div><span class="mod">Inventory</span></div>
-          <div class="sf"><div class="ic"><svg><use href="#i-doc"/></svg></div><div><b>Invoice &amp; VAT generated</b><small>Ready for e-Faktur</small></div><span class="mod">Invoicing</span></div>
-          <div class="sf"><div class="ic"><svg><use href="#i-coin"/></svg></div><div><b>Payment reconciled</b><small>Journal entries posted automatically</small></div><span class="mod">Accounting</span></div>
+      <div class="flowwrap">
+        <div class="flow" aria-label="Example of an integrated flow in Odoo">
+          <div class="flow-top"><b>One order, every module synced</b><span class="live"><i></i>live demo</span></div>
+          <div class="fs"><div class="ic"><svg><use href="#i-cart"/></svg></div><div><b>Sales order confirmed</b><small>Customer pricelist applied</small></div><span class="m">Sales</span></div>
+          <div class="fs"><div class="ic"><svg><use href="#i-box"/></svg></div><div><b>Stock reserved &amp; shipped</b><small>Picked from nearest warehouse</small></div><span class="m">Inventory</span></div>
+          <div class="fs"><div class="ic"><svg><use href="#i-doc"/></svg></div><div><b>Invoice &amp; VAT generated</b><small>Ready for e-Faktur</small></div><span class="m">Invoicing</span></div>
+          <div class="fs"><div class="ic"><svg><use href="#i-coin"/></svg></div><div><b>Payment reconciled</b><small>Journal posted automatically</small></div><span class="m">Accounting</span></div>
+          <div class="flow-foot"><span>Zero re-entry</span><div class="bar"><i id="bar"></i></div></div>
         </div>
-        <div class="flow-foot"><i></i>No re-entry, no month-end Excel reconciliation.</div>
+        <div class="spin" aria-hidden="true">
+          <svg viewBox="0 0 128 128"><defs><path id="circ" d="M64,64 m-50,0 a50,50 0 1,1 100,0 a50,50 0 1,1 -100,0"/></defs>
+            <text><textPath href="#circ">ODOO ERP • CONSULTING • AGZENT • </textPath></text></svg>
+          <div class="core"><svg viewBox="0 0 24 24"><use href="#i-star"/></svg></div>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="strip">
-    <div class="wrap">
-      <span><b>Editions:</b> Odoo Community · Odoo Enterprise</span>
-      <span><b>Hosting:</b> Odoo Online · Odoo.sh · VPS / on-premise</span>
-      <span><b>Stack:</b> Python · PostgreSQL · OWL</span>
+  <div class="marquee" aria-hidden="true">
+    <div class="track">
+      <span>Accounting</span><span>Inventory</span><span>Sales</span><span>Manufacturing</span><span>Purchase</span><span>Point of Sale</span><span>CRM</span><span>Payroll</span>
+      <span>Accounting</span><span>Inventory</span><span>Sales</span><span>Manufacturing</span><span>Purchase</span><span>Point of Sale</span><span>CRM</span><span>Payroll</span>
     </div>
   </div>
 
   <section id="services">
     <div class="wrap">
-      <span class="kicker">Services</span>
-      <h2>From the first plan to go-live, and beyond</h2>
-      <p class="sub">Pick what you need, whether that's a full implementation from scratch or help with the one part that's stuck.</p>
-      <div class="grid">
-        <div class="card">
+      <div class="head">
+        <div data-r><span class="tag"><i></i>Services</span><h2>Plan it. Build it.<br>Run it.</h2></div>
+        <p class="sub" data-r style="--d:1">A full implementation from scratch, or help with the one part that's stuck. Pick what you need.</p>
+      </div>
+      <div class="bento">
+        <div class="bx c1 tilt" data-r>
           <div class="ic"><svg><use href="#i-rocket"/></svg></div>
           <h3>Odoo implementation</h3>
           <p>Process analysis, module configuration, master data, access rights, and a phased go-live.</p>
-          <ul><li>Business process review</li><li>Chart of accounts &amp; tax setup</li><li>User acceptance testing</li></ul>
+          <ul><li>Process review</li><li>CoA &amp; tax setup</li><li>UAT</li></ul>
         </div>
-        <div class="card">
+        <div class="bx c2 tilt" data-r style="--d:1">
           <div class="ic"><svg><use href="#i-code"/></svg></div>
-          <h3>Customization &amp; custom modules</h3>
-          <p>Features that standard Odoo lacks are built as separate modules, so version upgrades stay safe.</p>
-          <ul><li>Reports &amp; document templates</li><li>Approval workflows</li><li>Python / OWL modules</li></ul>
+          <h3>Custom modules</h3>
+          <p>Features standard Odoo lacks, built as separate modules so upgrades stay painless.</p>
+          <ul><li>Reports &amp; templates</li><li>Approval flows</li><li>Python / OWL</li></ul>
         </div>
-        <div class="card">
+        <div class="bx c3 tilt" data-r>
           <div class="ic"><svg><use href="#i-move"/></svg></div>
           <h3>Data &amp; version migration</h3>
-          <p>Move from Excel, other accounting software, or an older Odoo version without losing the history that matters.</p>
-          <ul><li>Master data cleanup</li><li>Opening &amp; outstanding balances</li><li>Upgrades between Odoo versions</li></ul>
+          <p>From Excel, other software, or an older Odoo, keeping the history that matters.</p>
         </div>
-        <div class="card">
+        <div class="bx c4 tilt" data-r style="--d:1">
           <div class="ic"><svg><use href="#i-plug"/></svg></div>
-          <h3>System integration</h3>
-          <p>Connect Odoo to the applications you already use through APIs.</p>
-          <ul><li>Marketplaces &amp; online stores</li><li>Payment gateways &amp; bank statements</li><li>Attendance devices, POS, WMS</li></ul>
+          <h3>Integrations</h3>
+          <p>Marketplaces, payment gateways, bank statements, attendance devices, WMS, all via API.</p>
         </div>
-        <div class="card">
+        <div class="bx c5 tilt" data-r style="--d:2">
           <div class="ic"><svg><use href="#i-users"/></svg></div>
-          <h3>User training</h3>
-          <p>Department-by-department sessions using your own data, not demo data.</p>
-          <ul><li>Key user &amp; end user training</li><li>SOPs &amp; illustrated guides</li><li>Recorded sessions</li></ul>
+          <h3>Team training</h3>
+          <p>Per-department sessions with your real data, plus SOPs and recordings.</p>
         </div>
-        <div class="card">
+        <div class="bx c6" data-r>
           <div class="ic"><svg><use href="#i-life"/></svg></div>
-          <h3>Support &amp; maintenance</h3>
-          <p>Post-go-live care: fixes, small adjustments, backups, and server monitoring.</p>
-          <ul><li>Ticketing &amp; chat channel</li><li>Backups &amp; security updates</li><li>Regular performance reviews</li></ul>
+          <div>
+            <h3>Support &amp; maintenance</h3>
+            <p>After go-live we stay: fixes, small tweaks, backups, security updates, server monitoring.</p>
+          </div>
+          <span class="big">we stay.</span>
         </div>
       </div>
     </div>
   </section>
 
-  <section id="modules" class="alt">
+  <section id="modules" class="mods-sec">
     <div class="wrap">
-      <span class="kicker">Modules</span>
-      <h2>Odoo modules we work with</h2>
-      <p class="sub">Start with a few core modules and add more when your business is ready. Every module shares one database.</p>
-      <div class="mods">
-        <div class="mod-t"><i style="background:#0d9488"></i>Accounting</div>
-        <div class="mod-t"><i style="background:#0d9488"></i>Invoicing</div>
-        <div class="mod-t"><i style="background:#d97706"></i>Sales</div>
-        <div class="mod-t"><i style="background:#d97706"></i>CRM</div>
-        <div class="mod-t"><i style="background:#d97706"></i>Point of Sale</div>
-        <div class="mod-t"><i style="background:#2563eb"></i>Purchase</div>
-        <div class="mod-t"><i style="background:#2563eb"></i>Inventory</div>
-        <div class="mod-t"><i style="background:#2563eb"></i>Manufacturing</div>
-        <div class="mod-t"><i style="background:#7c3aed"></i>Employees</div>
-        <div class="mod-t"><i style="background:#7c3aed"></i>Payroll</div>
-        <div class="mod-t"><i style="background:#db2777"></i>Project</div>
-        <div class="mod-t"><i style="background:#db2777"></i>Helpdesk</div>
-        <div class="mod-t"><i style="background:#64748b"></i>Website &amp; eCommerce</div>
-        <div class="mod-t"><i style="background:#64748b"></i>Documents</div>
+      <div class="head">
+        <div data-r><span class="tag"><i></i>Modules</span><h2>Start small.<br>Stack more later.</h2></div>
+        <p class="sub" data-r style="--d:1">Begin with a few core apps and add more when you're ready. Every module shares one database.</p>
       </div>
-      <div class="lokal">
+      <div class="mods">
+        <span class="chip" data-r style="--d:0"><i></i>Accounting</span>
+        <span class="chip" data-r style="--d:1"><i></i>Invoicing</span>
+        <span class="chip" data-r style="--d:2"><i></i>Sales</span>
+        <span class="chip" data-r style="--d:3"><i></i>CRM</span>
+        <span class="chip" data-r style="--d:4"><i></i>Point of Sale</span>
+        <span class="chip" data-r style="--d:5"><i></i>Purchase</span>
+        <span class="chip" data-r style="--d:6"><i></i>Inventory</span>
+        <span class="chip" data-r style="--d:7"><i></i>Manufacturing</span>
+        <span class="chip" data-r style="--d:8"><i></i>Employees</span>
+        <span class="chip" data-r style="--d:9"><i></i>Payroll</span>
+        <span class="chip" data-r style="--d:10"><i></i>Project</span>
+        <span class="chip" data-r style="--d:11"><i></i>Helpdesk</span>
+        <span class="chip" data-r style="--d:12"><i></i>Website &amp; eCommerce</span>
+        <span class="chip" data-r style="--d:13"><i></i>Documents</span>
+      </div>
+      <div class="id-card" data-r>
         <div class="flag" aria-hidden="true"><div style="background:#dc2626"></div><div style="background:#fff"></div></div>
         <div>
           <b>Localized for Indonesia</b>
-          <p>VAT (PPN) and income tax (PPh), tax invoice formats for e-Faktur/Coretax, Rupiah and multi-currency, financial reports that local auditors expect, and a user interface in Indonesian.</p>
+          <p>VAT (PPN) and income tax (PPh), tax invoice formats for e-Faktur/Coretax, Rupiah and multi-currency, auditor-friendly financial reports, and an Indonesian-language interface.</p>
         </div>
       </div>
     </div>
@@ -339,72 +470,77 @@ footer .tm{flex-basis:100%;font-size:12px;opacity:.85}
 
   <section id="process">
     <div class="wrap">
-      <span class="kicker">Methodology</span>
-      <h2>Five phases, clear at every step</h2>
-      <p class="sub">Each phase has a deliverable you can review before we move on. Durations below are estimates for a mid-sized project.</p>
-      <div class="proc">
-        <div class="ph"><h3>Discovery</h3><p>Interviews with each department, process mapping, and a requirements list.</p><span class="dur">± 1–2 weeks</span></div>
-        <div class="ph"><h3>Solution design</h3><p>Fit-gap analysis: what standard Odoo covers and what needs to be built.</p><span class="dur">± 1 week</span></div>
-        <div class="ph"><h3>Build &amp; configure</h3><p>Module setup, custom development, data migration, and integrations.</p><span class="dur">± 3–8 weeks</span></div>
-        <div class="ph"><h3>Test &amp; train</h3><p>UAT with real-world scenarios and role-based training.</p><span class="dur">± 1–2 weeks</span></div>
-        <div class="ph"><h3>Go-live &amp; hypercare</h3><p>Balance cut-over, daily on-site support, then handover to the support team.</p><span class="dur">± 2–4 weeks</span></div>
+      <div class="head">
+        <div data-r><span class="tag"><i></i>Methodology</span><h2>Five phases.<br>Zero guesswork.</h2></div>
+        <p class="sub" data-r style="--d:1">Each phase ends with something you can review before we move on. Durations are estimates for a mid-sized project.</p>
+      </div>
+      <div class="proc" data-r>
+        <span class="line"></span>
+        <div class="ph"><div class="n">01</div><h3>Discovery</h3><p>Department interviews, process mapping, requirements list.</p><span class="dur">± 1–2 weeks</span></div>
+        <div class="ph"><div class="n">02</div><h3>Design</h3><p>Fit-gap analysis: what standard Odoo covers, what we build.</p><span class="dur">± 1 week</span></div>
+        <div class="ph"><div class="n">03</div><h3>Build</h3><p>Module setup, custom development, data migration, integrations.</p><span class="dur">± 3–8 weeks</span></div>
+        <div class="ph"><div class="n">04</div><h3>Test &amp; train</h3><p>UAT with real scenarios and role-based training.</p><span class="dur">± 1–2 weeks</span></div>
+        <div class="ph"><div class="n">05</div><h3>Go-live</h3><p>Balance cut-over, daily hypercare, then handover to support.</p><span class="dur">± 2–4 weeks</span></div>
       </div>
     </div>
   </section>
 
-  <section class="alt">
+  <section style="padding-top:0">
     <div class="wrap">
-      <span class="kicker">Industries</span>
-      <h2>A good fit for businesses like these</h2>
-      <p class="sub">Odoo is flexible enough for many business models. These are the ones that need it most often.</p>
+      <div class="head">
+        <div data-r><span class="tag"><i></i>Industries</span><h2>Built for how<br>you sell.</h2></div>
+        <p class="sub" data-r style="--d:1">Odoo flexes to many business models. These are the ones that need it most.</p>
+      </div>
       <div class="ind">
-        <div class="card"><h3>Distribution &amp; trading</h3><p>Many SKUs, multiple warehouses, customer-specific pricing, and receivables that need close tracking.</p><div class="use">Sales · Purchase · Inventory · Accounting</div></div>
-        <div class="card"><h3>Manufacturing</h3><p>Bills of materials, work orders, quality control, and accurate cost of goods.</p><div class="use">Manufacturing · Quality · Inventory</div></div>
-        <div class="card"><h3>Retail &amp; F&amp;B</h3><p>Multi-outlet point of sale whose stock and revenue land at head office immediately.</p><div class="use">Point of Sale · Inventory · Accounting</div></div>
-        <div class="card"><h3>Services &amp; projects</h3><p>Timesheets, milestone billing, and profitability for every project.</p><div class="use">Project · Timesheet · Invoicing</div></div>
+        <div class="icard" data-r><span class="emo">📦</span><h3>Distribution &amp; trading</h3><p>Many SKUs, multiple warehouses, customer-specific pricing, tight receivables.</p><div class="use">SALES · PURCHASE · INVENTORY</div></div>
+        <div class="icard" data-r style="--d:1"><span class="emo">🏭</span><h3>Manufacturing</h3><p>Bills of materials, work orders, quality control, accurate cost of goods.</p><div class="use">MRP · QUALITY · INVENTORY</div></div>
+        <div class="icard" data-r style="--d:2"><span class="emo">☕</span><h3>Retail &amp; F&amp;B</h3><p>Multi-outlet POS whose stock and revenue hit head office instantly.</p><div class="use">POS · INVENTORY · ACCOUNTING</div></div>
+        <div class="icard" data-r style="--d:3"><span class="emo">🧩</span><h3>Services &amp; projects</h3><p>Timesheets, milestone billing, and profitability per project.</p><div class="use">PROJECT · TIMESHEET · INVOICING</div></div>
       </div>
     </div>
   </section>
 
-  <section id="packages">
+  <section id="packages" class="pk-sec">
     <div class="wrap">
-      <span class="kicker">Packages</span>
-      <h2>Start at the right scale</h2>
-      <p class="sub">Pricing depends on scope: number of modules, users, customizations, and integrations. Tell us what you need and we'll send a written proposal.</p>
+      <div class="head">
+        <div data-r><span class="tag"><i></i>Packages</span><h2>Pick your<br>starting line.</h2></div>
+        <p class="sub" data-r style="--d:1">Pricing depends on scope: modules, users, customizations, integrations. Tell us what you need and we'll send a written proposal.</p>
+      </div>
       <div class="pk">
-        <div class="pkc">
+        <div class="pkc" data-r>
           <h3>Starter</h3>
           <p class="for">Small businesses moving off Excel or basic accounting software</p>
           <ul>
             <li><svg><use href="#i-check"/></svg>Up to 4 core modules</li>
             <li><svg><use href="#i-check"/></svg>Standard Odoo configuration</li>
-            <li><svg><use href="#i-check"/></svg>Master data &amp; opening balance import</li>
+            <li><svg><use href="#i-check"/></svg>Master data &amp; opening balances</li>
             <li><svg><use href="#i-check"/></svg>Key user training</li>
-            <li><svg><use href="#i-check"/></svg>1 month of post-go-live support</li>
+            <li><svg><use href="#i-check"/></svg>1 month post-go-live support</li>
           </ul>
           <a class="btn ghost" href="#contact" data-paket="Starter">Request a proposal</a>
         </div>
-        <div class="pkc feat">
+        <div class="pkc feat" data-r style="--d:1">
+          <span class="badge">Most popular ✦</span>
           <h3>Growth</h3>
           <p class="for">Mid-sized companies with several departments</p>
           <ul>
-            <li><svg><use href="#i-check"/></svg>Modules tailored to your needs</li>
+            <li><svg><use href="#i-check"/></svg>Modules tailored to you</li>
             <li><svg><use href="#i-check"/></svg>Custom reports &amp; workflows</li>
             <li><svg><use href="#i-check"/></svg>1–2 system integrations</li>
             <li><svg><use href="#i-check"/></svg>Per-department training &amp; SOPs</li>
-            <li><svg><use href="#i-check"/></svg>3 months of post-go-live support</li>
+            <li><svg><use href="#i-check"/></svg>3 months post-go-live support</li>
           </ul>
-          <a class="btn primary" href="#contact" data-paket="Growth">Request a proposal</a>
+          <a class="btn dark" href="#contact" data-paket="Growth">Request a proposal <svg><use href="#i-arrow"/></svg></a>
         </div>
-        <div class="pkc">
+        <div class="pkc" data-r style="--d:2">
           <h3>Enterprise</h3>
-          <p class="for">Business groups, multi-company setups, or complex processes</p>
+          <p class="for">Business groups, multi-company setups, complex processes</p>
           <ul>
             <li><svg><use href="#i-check"/></svg>Multi-company &amp; consolidation</li>
             <li><svg><use href="#i-check"/></svg>Custom modules &amp; advanced integrations</li>
             <li><svg><use href="#i-check"/></svg>Migration from a legacy ERP</li>
             <li><svg><use href="#i-check"/></svg>Dedicated project manager</li>
-            <li><svg><use href="#i-check"/></svg>Support contract with an SLA</li>
+            <li><svg><use href="#i-check"/></svg>Support contract with SLA</li>
           </ul>
           <a class="btn ghost" href="#contact" data-paket="Enterprise">Request a proposal</a>
         </div>
@@ -412,27 +548,28 @@ footer .tm{flex-basis:100%;font-size:12px;opacity:.85}
     </div>
   </section>
 
-  <section id="faq" class="alt">
-    <div class="wrap">
-      <span class="kicker">FAQ</span>
-      <h2>Frequently asked questions</h2>
-      <div class="faq" style="margin-top:28px">
-        <details><summary>What's the difference between Odoo Community and Enterprise?</summary><p>Community is open source with no license fee. Enterprise is licensed per user and adds features such as full accounting, mobile apps, Studio, and Odoo.sh hosting. We help you choose based on the modules you actually need.</p></details>
-        <details><summary>How long does an implementation take?</summary><p>A simple implementation with a few core modules usually takes 1–2 months. Projects with heavy customization or many integrations can take 3–6 months. We set the exact timeline after the discovery phase.</p></details>
-        <details><summary>Our data lives in Excel or other software. Can it be migrated?</summary><p>Yes. Master data (customers, vendors, products) and opening balances are almost always migrated. For transaction history, we agree together on how far back you need to go.</p></details>
-        <details><summary>Where is Odoo hosted?</summary><p>There are three options: Odoo Online (Odoo's SaaS), Odoo.sh, or your own server, either a VPS or on-premise. We walk you through the trade-offs in cost, control, and ease of upgrading.</p></details>
-        <details><summary>What if something goes wrong after go-live?</summary><p>Every package includes a support period after go-live. After that, a monthly support contract covers fixes, small adjustments, and server maintenance.</p></details>
+  <section id="faq" class="faq-sec">
+    <div class="wrap faq-grid">
+      <div data-r><span class="tag"><i></i>FAQ</span><h2 style="margin-top:20px">Questions?<br>Fair.</h2></div>
+      <div data-r style="--d:1">
+        <details><summary>Odoo Community vs Enterprise?<span class="pl"><svg><use href="#i-plus"/></svg></span></summary><p>Community is open source with no license fee. Enterprise is licensed per user and adds features like full accounting, mobile apps, Studio, and Odoo.sh hosting. We help you choose based on the modules you actually need.</p></details>
+        <details><summary>How long does it take?<span class="pl"><svg><use href="#i-plus"/></svg></span></summary><p>A simple rollout with a few core modules usually takes 1–2 months. Heavy customization or many integrations can take 3–6 months. We lock the timeline after discovery.</p></details>
+        <details><summary>Our data is in Excel. Can it move?<span class="pl"><svg><use href="#i-plus"/></svg></span></summary><p>Yes. Master data (customers, vendors, products) and opening balances almost always move. For transaction history, we agree together on how far back you need.</p></details>
+        <details><summary>Where is Odoo hosted?<span class="pl"><svg><use href="#i-plus"/></svg></span></summary><p>Odoo Online (Odoo's SaaS), Odoo.sh, or your own server, VPS or on-premise. We walk you through the trade-offs in cost, control, and ease of upgrading.</p></details>
+        <details><summary>What if something breaks after go-live?<span class="pl"><svg><use href="#i-plus"/></svg></span></summary><p>Every package includes a support period after go-live. After that, a monthly support contract covers fixes, small tweaks, and server maintenance.</p></details>
       </div>
     </div>
   </section>
 
-  <section id="contact">
+  <section id="contact" class="ct-sec">
     <div class="wrap">
-      <div class="contact">
+      <div class="contact" data-r>
+        <div class="blob" style="width:360px;height:360px;background:#fff;top:-120px;left:-80px"></div>
+        <div class="blob" style="width:220px;height:220px;background:var(--lime);bottom:-60px;right:40%;opacity:.35;animation-delay:-8s"></div>
         <div>
-          <span class="kicker">Contact</span>
-          <h2>Tell us how your business runs</h2>
-          <p>The first consultation is free. We listen to how you work and tell you honestly whether Odoo is a good fit.</p>
+          <span class="tag"><i></i>Contact</span>
+          <h2 style="margin-top:22px">Let's fix your <em>workflow.</em></h2>
+          <p>The first consultation is free. Tell us how you work, and we'll tell you honestly whether Odoo fits.</p>
           <a class="mail" href="mailto:ags@agzent.my.id"><svg><use href="#i-mail"/></svg>ags@agzent.my.id</a>
         </div>
         <form id="f" novalidate>
@@ -442,15 +579,15 @@ footer .tm{flex-basis:100%;font-size:12px;opacity:.85}
           </div>
           <div class="row">
             <label>Email<input name="email" type="email" required autocomplete="email"></label>
-            <label>Package of interest
+            <label>Package
               <select name="paket" id="paket">
                 <option>Not sure yet</option><option>Starter</option><option>Growth</option><option>Enterprise</option><option>Support only</option>
               </select>
             </label>
           </div>
-          <label>What do you need?<textarea name="pesan" placeholder="Example: distributor with 3 warehouses, currently on Excel, wants real-time stock and receivables."></textarea></label>
-          <button class="btn light" type="submit" style="justify-self:start">Send via email</button>
-          <p class="note">This button opens your email app with the message already filled in.</p>
+          <label>What do you need?<textarea name="pesan" placeholder="e.g. distributor with 3 warehouses, on Excel now, wants real-time stock and receivables."></textarea></label>
+          <button class="btn lime" type="submit" style="justify-self:start">Send it <svg><use href="#i-arrow"/></svg></button>
+          <p class="note">Opens your email app with the message pre-filled.</p>
         </form>
       </div>
     </div>
@@ -458,6 +595,7 @@ footer .tm{flex-basis:100%;font-size:12px;opacity:.85}
 </main>
 
 <footer>
+  <div class="wordmark" aria-hidden="true">agzent</div>
   <div class="wrap">
     <span>© 2026 Agzent · agzent.my.id</span>
     <span><a href="/erp-insights.html">ERP Insights</a> · <a href="mailto:ags@agzent.my.id">ags@agzent.my.id</a></span>
@@ -466,18 +604,54 @@ footer .tm{flex-basis:100%;font-size:12px;opacity:.85}
 </footer>
 
 <script>
-document.querySelectorAll('[data-paket]').forEach(function(a){
-  a.addEventListener('click',function(){document.getElementById('paket').value=a.dataset.paket;});
-});
-document.getElementById('f').addEventListener('submit',function(e){
-  e.preventDefault();
-  var d=new FormData(this);
-  if(!d.get('nama')||!d.get('email')){alert('Please fill in your name and email.');return;}
-  var subj='Odoo consultation — '+(d.get('perusahaan')||d.get('nama'));
-  var body='Name: '+d.get('nama')+'\nCompany: '+(d.get('perusahaan')||'-')+'\nEmail: '+d.get('email')+
-    '\nPackage of interest: '+d.get('paket')+'\n\nNeeds:\n'+(d.get('pesan')||'-');
-  location.href='mailto:ags@agzent.my.id?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
-});
+(function(){
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // scroll reveal
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  },{threshold:.12, rootMargin:'0px 0px -40px 0px'});
+  document.querySelectorAll('[data-r]').forEach(function(el){ io.observe(el); });
+
+  // animated order flow
+  var steps = document.querySelectorAll('.fs'), bar = document.getElementById('bar'), k = 0;
+  function tick(){
+    steps.forEach(function(s,i){ s.classList.toggle('on', i===k); s.classList.toggle('done', i<k); });
+    bar.style.width = ((k+1)/steps.length*100)+'%';
+    k = (k+1) % steps.length;
+  }
+  tick(); if(!reduce) setInterval(tick, 1700);
+
+  if(!reduce && matchMedia('(pointer:fine)').matches){
+    // card tilt
+    document.querySelectorAll('.tilt').forEach(function(c){
+      c.addEventListener('mousemove',function(e){
+        var r=c.getBoundingClientRect(), x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
+        c.style.transform='perspective(900px) rotateX('+(-y*7)+'deg) rotateY('+(x*7)+'deg) translateY(-4px)';
+      });
+      c.addEventListener('mouseleave',function(){ c.style.transform=''; });
+    });
+    // hero blobs drift with scroll
+    var blobs=document.querySelectorAll('.hero .blob');
+    addEventListener('scroll',function(){
+      var y=scrollY; blobs.forEach(function(b,i){ b.style.translate='0 '+(y*(.08+i*.05))+'px'; });
+    },{passive:true});
+  }
+
+  // package preselect + mailto form
+  document.querySelectorAll('[data-paket]').forEach(function(a){
+    a.addEventListener('click',function(){ document.getElementById('paket').value=a.dataset.paket; });
+  });
+  document.getElementById('f').addEventListener('submit',function(e){
+    e.preventDefault();
+    var d=new FormData(this);
+    if(!d.get('nama')||!d.get('email')){ alert('Please fill in your name and email.'); return; }
+    var subj='Odoo consultation — '+(d.get('perusahaan')||d.get('nama'));
+    var body='Name: '+d.get('nama')+'\nCompany: '+(d.get('perusahaan')||'-')+'\nEmail: '+d.get('email')+
+      '\nPackage: '+d.get('paket')+'\n\nNeeds:\n'+(d.get('pesan')||'-');
+    location.href='mailto:ags@agzent.my.id?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+  });
+})();
 </script>
 </body>
 </html>
