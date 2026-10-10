@@ -3,178 +3,455 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agzent — Teknologi ERP</title>
-<meta name="description" content="Agzent: catatan ringkas tentang teknologi ERP — modul, arsitektur, platform, integrasi, dan tren terbaru.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230f766e'/><path d='M9 22 16 9l7 13M11.5 17.5h9' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<title>Agzent — Konsultan Implementasi Odoo ERP</title>
+<meta name="description" content="Agzent membantu bisnis di Indonesia mengimplementasikan Odoo ERP: analisis proses, konfigurasi, kustomisasi modul, migrasi data, integrasi, pelatihan, dan support.">
+<meta property="og:title" content="Agzent — Konsultan Implementasi Odoo ERP">
+<meta property="og:description" content="Implementasi, kustomisasi, migrasi, dan support Odoo ERP untuk bisnis di Indonesia.">
+<meta property="og:url" content="https://agzent.my.id/">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0b2530">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230b2530'/><path d='M8 23 16 8l8 15' stroke='%232dd4bf' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/><circle cx='16' cy='18' r='2.6' fill='%23fbbf24'/></svg>">
 <style>
 :root{
-  --bg:#f7f8f6;--surface:#ffffff;--ink:#14201d;--muted:#5b6965;--line:#e2e6e3;
-  --accent:#0f766e;--accent-soft:#e3f2ef;--warm:#b45309;
-  --radius:14px;--max:1080px;
+  --bg:#f6f8f7;--surface:#ffffff;--surface-2:#eef3f1;--ink:#0d1b1e;--muted:#56666a;--line:#dde5e2;
+  --brand:#0b2530;--accent:#0d9488;--accent-ink:#ffffff;--accent-soft:#dff3ef;--gold:#d97706;--gold-soft:#fdf1dc;
+  --radius:16px;--max:1140px;
+  --shadow:0 1px 2px rgba(13,27,30,.05),0 8px 24px -12px rgba(13,27,30,.12);
 }
 @media (prefers-color-scheme:dark){
-  :root{--bg:#0d1412;--surface:#141d1a;--ink:#e6eeeb;--muted:#93a39e;--line:#24302c;
-    --accent:#2dd4bf;--accent-soft:#12302b;--warm:#f59e0b;}
+  :root{--bg:#081316;--surface:#0f1d21;--surface-2:#132429;--ink:#e5eeec;--muted:#93a6a8;--line:#1f3237;
+    --brand:#0f1d21;--accent:#2dd4bf;--accent-ink:#04201c;--accent-soft:#0f302d;--gold:#fbbf24;--gold-soft:#2b220e;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.5);}
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
 body{margin:0;background:var(--bg);color:var(--ink);
   font:16px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 a{color:var(--accent)}
+img,svg{display:block}
 .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
-header.top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);
-  backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:16px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;color:var(--ink);text-decoration:none}
-.brand i{width:28px;height:28px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:#fff;font-style:normal;font-size:15px}
-nav{display:flex;gap:18px;font-size:14px;overflow-x:auto}
-nav a{color:var(--muted);text-decoration:none;white-space:nowrap}
-nav a:hover{color:var(--ink)}
-.hero{padding:84px 0 56px}
-.eyebrow{display:inline-block;font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:4px 10px;border-radius:99px}
-h1{font-size:clamp(34px,6vw,56px);line-height:1.08;letter-spacing:-.03em;margin:18px 0 18px;max-width:16ch}
-.lead{font-size:clamp(17px,2.2vw,20px);color:var(--muted);max-width:60ch;margin:0}
-.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
-.btn{display:inline-block;padding:11px 18px;border-radius:10px;font-weight:600;text-decoration:none;font-size:15px}
-.btn.primary{background:var(--accent);color:#fff}
-@media (prefers-color-scheme:dark){.btn.primary{color:#04201c}}
-.btn.ghost{border:1px solid var(--line);color:var(--ink)}
-section{padding:56px 0;border-top:1px solid var(--line)}
-h2{font-size:clamp(24px,3.4vw,32px);letter-spacing:-.02em;margin:0 0 8px}
-.sub{color:var(--muted);margin:0 0 30px;max-width:62ch}
-.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
-.card h3{margin:0 0 6px;font-size:17px}
+h1,h2,h3{letter-spacing:-.02em;line-height:1.15}
+h2{font-size:clamp(26px,3.6vw,38px);margin:10px 0 12px}
+.kicker{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.sub{color:var(--muted);max-width:62ch;margin:0 0 36px;font-size:17px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:11px;font-weight:650;
+  text-decoration:none;font-size:15px;border:1px solid transparent;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.ghost{border-color:var(--line);color:var(--ink);background:var(--surface)}
+.btn.light{background:#fff;color:#0b2530}
+
+/* header */
+header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 86%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;height:66px;gap:20px}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:800;font-size:20px;letter-spacing:-.03em}
+.logo svg{width:32px;height:32px}
+.logo small{display:block;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.02em;margin-top:-4px}
+nav.main{display:flex;gap:24px;font-size:15px}
+nav.main a{color:var(--muted);text-decoration:none}
+nav.main a:hover{color:var(--ink)}
+@media (max-width:880px){nav.main{display:none}}
+@media (max-width:420px){.top .btn{padding:9px 12px;font-size:14px}}
+
+/* hero */
+.hero{padding:72px 0 64px}
+.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+@media (max-width:920px){.hero .wrap{grid-template-columns:1fr;gap:40px}}
+.pill{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:650;color:var(--ink);
+  background:var(--surface);border:1px solid var(--line);padding:5px 12px 5px 6px;border-radius:99px}
+.pill b{background:var(--gold-soft);color:var(--gold);padding:2px 8px;border-radius:99px;font-size:12px}
+h1{font-size:clamp(36px,5.6vw,60px);margin:20px 0 18px;letter-spacing:-.035em;line-height:1.05}
+h1 em{font-style:normal;color:var(--accent)}
+.lead{font-size:clamp(17px,2vw,19px);color:var(--muted);max-width:54ch;margin:0}
+.hero .cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.facts{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:30px;font-size:14px;color:var(--muted)}
+.facts span{display:flex;align-items:center;gap:7px}
+.facts svg{width:16px;height:16px;color:var(--accent)}
+
+/* flow card */
+.flow{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:var(--shadow)}
+.flow-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.flow-head b{font-size:15px}
+.flow-head span{white-space:nowrap;font-size:12px;color:var(--muted);background:var(--surface-2);padding:3px 9px;border-radius:99px}
+.steps-flow{display:grid;gap:10px;position:relative}
+.sf{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:center;padding:12px 14px;border-radius:13px;
+  background:var(--surface-2);position:relative}
+.sf .ic{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.sf .ic svg{width:22px;height:22px}
+.sf b{display:block;font-size:15px}
+.sf small{color:var(--muted);font-size:13px}
+.sf .mod{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--gold);background:var(--gold-soft);padding:3px 8px;border-radius:6px}
+.sf:not(:last-child)::after{content:"";position:absolute;left:35px;bottom:-11px;width:2px;height:12px;background:var(--line)}
+@media (max-width:520px){.sf{grid-template-columns:40px 1fr}.sf .ic{width:40px;height:40px}.sf .mod{grid-column:2;justify-self:start}.sf:not(:last-child)::after{left:33px}}
+.flow-foot{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line);display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
+.flow-foot i{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+
+/* strip */
+.strip{border-block:1px solid var(--line);background:var(--surface)}
+.strip .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px 28px;padding-block:20px;font-size:14px;color:var(--muted)}
+.strip b{color:var(--ink)}
+
+section{padding:88px 0}
+section.alt{background:var(--surface);border-block:1px solid var(--line)}
+
+/* services */
+.grid{display:grid;gap:18px;grid-template-columns:repeat(3,1fr)}
+@media (max-width:920px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:600px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px}
+section.alt .card{background:var(--bg)}
+.card .ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);margin-bottom:16px}
+.card .ic svg{width:22px;height:22px}
+.card h3{margin:0 0 8px;font-size:18px}
 .card p{margin:0;color:var(--muted);font-size:15px}
-.tag{font-size:12px;font-weight:600;color:var(--warm);text-transform:uppercase;letter-spacing:.06em}
-/* architecture diagram */
-.stack{display:grid;gap:10px}
-.layer{display:grid;grid-template-columns:170px 1fr;gap:16px;align-items:center;background:var(--surface);
-  border:1px solid var(--line);border-radius:12px;padding:14px 18px}
-.layer b{font-size:14px}
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chips span{font-size:13px;background:var(--accent-soft);color:var(--ink);padding:3px 9px;border-radius:7px}
-@media (max-width:640px){.layer{grid-template-columns:1fr;gap:8px}}
-/* table */
-.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
-table{border-collapse:collapse;width:100%;min-width:640px;font-size:15px}
-th,td{text-align:left;padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-tr:last-child td{border-bottom:0}
-td:first-child{font-weight:600;white-space:nowrap}
-/* steps */
-ol.steps{list-style:none;padding:0;margin:0;display:grid;gap:12px;counter-reset:s}
-ol.steps li{counter-increment:s;display:grid;grid-template-columns:40px 1fr;gap:14px;background:var(--surface);
-  border:1px solid var(--line);border-radius:12px;padding:16px 18px}
-ol.steps li::before{content:counter(s);width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;
-  display:grid;place-items:center;font-weight:700;font-size:14px}
-@media (prefers-color-scheme:dark){ol.steps li::before{color:#04201c}}
-ol.steps b{display:block}
-ol.steps span{color:var(--muted);font-size:15px}
-footer{border-top:1px solid var(--line);padding:30px 0 40px;color:var(--muted);font-size:14px}
-footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.card ul{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:6px;font-size:14px}
+.card li{display:flex;gap:8px;color:var(--ink)}
+.card li::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-top:9px}
+
+/* modules */
+.mods{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.mod-t{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:14px 16px;font-weight:600;font-size:15px}
+.mod-t i{width:10px;height:10px;border-radius:3px;flex:none}
+.lokal{margin-top:26px;display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center;background:var(--gold-soft);
+  border-radius:var(--radius);padding:22px 24px}
+.lokal .flag{width:44px;height:30px;border-radius:5px;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+.lokal .flag div{height:50%}
+.lokal b{display:block;margin-bottom:4px}
+.lokal p{margin:0;color:var(--muted);font-size:15px}
+@media (max-width:600px){.lokal{grid-template-columns:1fr}}
+
+/* process */
+.proc{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;counter-reset:p}
+@media (max-width:980px){.proc{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.proc{grid-template-columns:1fr}}
+.ph{counter-increment:p;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);padding:22px;position:relative}
+.ph::before{content:"0" counter(p);font-size:13px;font-weight:800;color:var(--accent);letter-spacing:.06em}
+.ph h3{font-size:17px;margin:10px 0 6px}
+.ph p{margin:0;color:var(--muted);font-size:14px}
+.ph .dur{display:inline-block;margin-top:14px;font-size:12px;font-weight:650;color:var(--muted);background:var(--surface-2);padding:3px 9px;border-radius:99px}
+
+/* industries */
+.ind{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.ind .card h3{font-size:17px}
+.ind .card .use{margin-top:12px;font-size:13px;color:var(--accent);font-weight:650}
+
+/* packages */
+.pk{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:stretch}
+@media (max-width:920px){.pk{grid-template-columns:1fr}}
+.pkc{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:28px;display:flex;flex-direction:column}
+.pkc.feat{border:2px solid var(--accent);background:var(--surface);position:relative}
+.pkc.feat::before{content:"Paling sering dipilih";position:absolute;top:-12px;left:24px;font-size:12px;font-weight:700;
+  background:var(--accent);color:var(--accent-ink);padding:3px 10px;border-radius:99px}
+.pkc h3{margin:0;font-size:20px}
+.pkc .for{color:var(--muted);font-size:14px;margin:6px 0 18px}
+.pkc ul{list-style:none;padding:0;margin:0 0 24px;display:grid;gap:10px;font-size:15px;flex:1}
+.pkc li{display:grid;grid-template-columns:20px 1fr;gap:8px}
+.pkc li svg{width:18px;height:18px;color:var(--accent);margin-top:3px}
+.pkc .btn{justify-content:center}
+
+/* faq */
+.faq{max-width:820px;display:grid;gap:12px}
+details{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:0 20px}
+summary{cursor:pointer;list-style:none;padding:18px 0;font-weight:650;display:flex;justify-content:space-between;gap:16px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:22px;line-height:1;color:var(--accent);font-weight:400}
+details[open] summary::after{content:"–"}
+details p{margin:0 0 18px;color:var(--muted)}
+
+/* contact */
+.contact{background:var(--brand);color:#e6f2f0;border-radius:26px;padding:clamp(28px,5vw,56px);
+  display:grid;grid-template-columns:1fr 1fr;gap:40px}
+@media (max-width:860px){.contact{grid-template-columns:1fr}}
+.contact h2{color:#fff}
+.contact .kicker{color:#5eead4}
+.contact p{color:#a9c1c0}
+.contact .mail{display:inline-flex;align-items:center;gap:10px;color:#fff;font-weight:650;font-size:18px;text-decoration:none;margin-top:8px}
+.contact .mail svg{width:22px;height:22px;color:#5eead4}
+form{display:grid;gap:12px}
+form label{font-size:13px;font-weight:600;color:#cfe1df;display:grid;gap:6px}
+form input,form select,form textarea{font:inherit;font-size:15px;color:#fff;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:11px 13px;width:100%}
+form select option{color:#0d1b1e}
+form textarea{min-height:110px;resize:vertical}
+form input:focus,form select:focus,form textarea:focus{outline:2px solid #2dd4bf;outline-offset:1px;border-color:transparent}
+form .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:520px){form .row{grid-template-columns:1fr}}
+form .note{font-size:12px;color:#86a3a2;margin:0}
+
+footer{padding:40px 0 48px;color:var(--muted);font-size:14px}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px 32px}
+footer a{color:var(--muted)}
+footer .tm{flex-basis:100%;font-size:12px;opacity:.85}
 </style>
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-cart" viewBox="0 0 24 24"><path d="M3 4h2l2.2 10.5a2 2 0 0 0 2 1.5h7.6a2 2 0 0 0 2-1.5L20 8H6.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1.4" fill="currentColor"/><circle cx="17" cy="20" r="1.4" fill="currentColor"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8zM3 8l9 5 9-5M12 13v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14.8 9.2c-.5-.8-1.5-1.3-2.8-1.3-1.7 0-2.8.9-2.8 2.1 0 2.9 5.8 1.5 5.8 4.2 0 1.2-1.2 2.1-3 2.1-1.4 0-2.5-.6-3-1.5M12 6.5v11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-rocket" viewBox="0 0 24 24"><path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2M9 12l3 3M14.5 4.5c2.5-1 4.5-1 5-.5s.5 2.5-.5 5L13 16l-5-5 6.5-6.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-move" viewBox="0 0 24 24"><path d="M4 7h13l-3-3M20 17H7l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0V8zM12 17v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.8.7 3 2.5 3.5 5.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-life" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 6l3.5 3.5M18 6l-3.5 3.5M6 18l3.5-3.5M18 18l-3.5-3.5" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
 <header class="top">
   <div class="wrap">
-    <a class="brand" href="#"><i>A</i>Agzent</a>
-    <nav>
+    <a class="logo" href="#top" aria-label="Agzent beranda">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0b2530"/><path d="M8 23 16 8l8 15" stroke="#2dd4bf" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="18" r="2.6" fill="#fbbf24"/></svg>
+      <span>agzent<small>Odoo ERP Consulting</small></span>
+    </a>
+    <nav class="main" aria-label="Navigasi utama">
+      <a href="#layanan">Layanan</a>
       <a href="#modul">Modul</a>
-      <a href="#arsitektur">Arsitektur</a>
-      <a href="#platform">Platform</a>
-      <a href="#integrasi">Integrasi</a>
-      <a href="#tren">Tren</a>
+      <a href="#proses">Proses</a>
+      <a href="#paket">Paket</a>
+      <a href="#faq">FAQ</a>
     </nav>
+    <a class="btn primary" href="#kontak">Konsultasi gratis</a>
   </div>
 </header>
 
-<main>
-  <div class="wrap hero">
-    <span class="eyebrow">Teknologi ERP</span>
-    <h1>Satu sistem untuk seluruh proses bisnis.</h1>
-    <p class="lead">Enterprise Resource Planning (ERP) menyatukan keuangan, persediaan, pembelian, penjualan, produksi, dan SDM dalam satu basis data. Di sini kami merangkum cara kerjanya, pilihan platformnya, dan arah perkembangannya.</p>
-    <div class="cta">
-      <a class="btn primary" href="#modul">Mulai dari modul inti</a>
-      <a class="btn ghost" href="#platform">Bandingkan platform</a>
+<main id="top">
+  <div class="hero">
+    <div class="wrap">
+      <div>
+        <span class="pill"><b>Odoo ERP</b> Community &amp; Enterprise</span>
+        <h1>Odoo ERP yang mengikuti cara <em>bisnis Anda</em> bekerja.</h1>
+        <p class="lead">Agzent membantu perusahaan di Indonesia memindahkan penjualan, stok, pembelian, produksi, dan keuangan ke satu sistem Odoo, mulai dari analisis proses sampai tim Anda lancar memakainya sendiri.</p>
+        <div class="cta">
+          <a class="btn primary" href="#kontak">Jadwalkan konsultasi</a>
+          <a class="btn ghost" href="#layanan">Lihat layanan</a>
+        </div>
+        <div class="facts">
+          <span><svg><use href="#i-check"/></svg>Lokalisasi pajak Indonesia</span>
+          <span><svg><use href="#i-check"/></svg>Cloud atau server sendiri</span>
+          <span><svg><use href="#i-check"/></svg>Dokumentasi berbahasa Indonesia</span>
+        </div>
+      </div>
+
+      <div class="flow" aria-label="Contoh alur terintegrasi di Odoo">
+        <div class="flow-head"><b>Satu transaksi, semua modul ikut terbarui</b><span>contoh alur</span></div>
+        <div class="steps-flow">
+          <div class="sf"><div class="ic"><svg><use href="#i-cart"/></svg></div><div><b>Sales order dikonfirmasi</b><small>Harga &amp; diskon dari pricelist pelanggan</small></div><span class="mod">Sales</span></div>
+          <div class="sf"><div class="ic"><svg><use href="#i-box"/></svg></div><div><b>Stok dicadangkan &amp; dikirim</b><small>Picking dari gudang terdekat</small></div><span class="mod">Inventory</span></div>
+          <div class="sf"><div class="ic"><svg><use href="#i-doc"/></svg></div><div><b>Faktur &amp; PPN terbentuk</b><small>Siap untuk e-Faktur</small></div><span class="mod">Invoicing</span></div>
+          <div class="sf"><div class="ic"><svg><use href="#i-coin"/></svg></div><div><b>Pembayaran direkonsiliasi</b><small>Jurnal otomatis ke buku besar</small></div><span class="mod">Accounting</span></div>
+        </div>
+        <div class="flow-foot"><i></i>Tanpa input ulang, tanpa rekap Excel di akhir bulan.</div>
+      </div>
     </div>
   </div>
 
-  <section id="modul">
+  <div class="strip">
     <div class="wrap">
-      <h2>Modul inti ERP</h2>
-      <p class="sub">Semua modul membaca dan menulis ke data yang sama. Karena itu, faktur penjualan langsung mengurangi stok sekaligus tercatat di buku besar tanpa input ulang.</p>
+      <span><b>Edisi:</b> Odoo Community · Odoo Enterprise</span>
+      <span><b>Hosting:</b> Odoo Online · Odoo.sh · VPS / on-premise</span>
+      <span><b>Teknologi:</b> Python · PostgreSQL · OWL</span>
+    </div>
+  </div>
+
+  <section id="layanan">
+    <div class="wrap">
+      <span class="kicker">Layanan</span>
+      <h2>Dari rencana sampai go-live, dan sesudahnya</h2>
+      <p class="sub">Pilih yang Anda butuhkan, baik implementasi penuh dari nol maupun bantuan untuk satu bagian yang macet.</p>
       <div class="grid">
-        <div class="card"><span class="tag">Finance</span><h3>Keuangan &amp; Akuntansi</h3><p>Buku besar, utang/piutang, aset tetap, rekonsiliasi bank, dan laporan keuangan.</p></div>
-        <div class="card"><span class="tag">SCM</span><h3>Rantai Pasok</h3><p>Persediaan multi-gudang, pembelian, perencanaan kebutuhan material (MRP), dan logistik.</p></div>
-        <div class="card"><span class="tag">Sales</span><h3>Penjualan &amp; CRM</h3><p>Penawaran, pesanan, penagihan, daftar harga, dan riwayat pelanggan.</p></div>
-        <div class="card"><span class="tag">MFG</span><h3>Manufaktur</h3><p>Bill of materials, perintah kerja, routing, kontrol kualitas, dan perhitungan biaya produksi.</p></div>
-        <div class="card"><span class="tag">HCM</span><h3>SDM &amp; Penggajian</h3><p>Data karyawan, absensi, cuti, penggajian, serta pajak penghasilan.</p></div>
-        <div class="card"><span class="tag">BI</span><h3>Analitik</h3><p>Dasbor, KPI, dan laporan lintas modul yang diambil dari satu sumber data.</p></div>
+        <div class="card">
+          <div class="ic"><svg><use href="#i-rocket"/></svg></div>
+          <h3>Implementasi Odoo</h3>
+          <p>Analisis proses, konfigurasi modul, master data, hak akses, dan go-live bertahap.</p>
+          <ul><li>Business process review</li><li>Setup chart of accounts &amp; pajak</li><li>User acceptance test</li></ul>
+        </div>
+        <div class="card">
+          <div class="ic"><svg><use href="#i-code"/></svg></div>
+          <h3>Kustomisasi &amp; modul custom</h3>
+          <p>Fitur yang belum ada di standar Odoo kami bangun sebagai modul terpisah, sehingga upgrade versi tetap aman.</p>
+          <ul><li>Laporan &amp; template dokumen</li><li>Workflow approval</li><li>Modul Python / OWL</li></ul>
+        </div>
+        <div class="card">
+          <div class="ic"><svg><use href="#i-move"/></svg></div>
+          <h3>Migrasi data &amp; versi</h3>
+          <p>Pindah dari Excel, software akuntansi lain, atau Odoo versi lama tanpa kehilangan histori penting.</p>
+          <ul><li>Pembersihan master data</li><li>Saldo awal &amp; outstanding</li><li>Upgrade antar versi Odoo</li></ul>
+        </div>
+        <div class="card">
+          <div class="ic"><svg><use href="#i-plug"/></svg></div>
+          <h3>Integrasi sistem</h3>
+          <p>Hubungkan Odoo dengan aplikasi yang sudah Anda pakai melalui API.</p>
+          <ul><li>Marketplace &amp; toko online</li><li>Payment gateway &amp; mutasi bank</li><li>Mesin absensi, POS, WMS</li></ul>
+        </div>
+        <div class="card">
+          <div class="ic"><svg><use href="#i-users"/></svg></div>
+          <h3>Pelatihan pengguna</h3>
+          <p>Kelas per departemen dengan data Anda sendiri, bukan data demo.</p>
+          <ul><li>Training key user &amp; end user</li><li>SOP &amp; panduan bergambar</li><li>Rekaman sesi</li></ul>
+        </div>
+        <div class="card">
+          <div class="ic"><svg><use href="#i-life"/></svg></div>
+          <h3>Support &amp; maintenance</h3>
+          <p>Pendampingan setelah go-live: perbaikan, penyesuaian kecil, backup, dan pemantauan server.</p>
+          <ul><li>Tiket &amp; kanal chat</li><li>Backup &amp; update keamanan</li><li>Review performa berkala</li></ul>
+        </div>
       </div>
     </div>
   </section>
 
-  <section id="arsitektur">
+  <section id="modul" class="alt">
     <div class="wrap">
-      <h2>Arsitektur ERP modern</h2>
-      <p class="sub">ERP generasi sekarang umumnya berbentuk aplikasi web berlapis yang berjalan di cloud dan dibuka ke sistem lain lewat API.</p>
-      <div class="stack">
-        <div class="layer"><b>Antarmuka</b><div class="chips"><span>Web app</span><span>Mobile</span><span>Portal pelanggan/vendor</span><span>Asisten AI</span></div></div>
-        <div class="layer"><b>Integrasi</b><div class="chips"><span>REST / OData</span><span>GraphQL</span><span>Webhook</span><span>EDI</span><span>Message queue</span></div></div>
-        <div class="layer"><b>Logika bisnis</b><div class="chips"><span>Workflow &amp; approval</span><span>Aturan pajak</span><span>Posting jurnal</span><span>Kustomisasi / ekstensi</span></div></div>
-        <div class="layer"><b>Data</b><div class="chips"><span>Database relasional</span><span>In-memory (mis. SAP HANA)</span><span>Data warehouse</span></div></div>
-        <div class="layer"><b>Infrastruktur</b><div class="chips"><span>SaaS multi-tenant</span><span>Private cloud</span><span>On-premise</span></div></div>
+      <span class="kicker">Modul</span>
+      <h2>Modul Odoo yang kami tangani</h2>
+      <p class="sub">Mulai dari beberapa modul inti, lalu tambahkan modul lain saat bisnis Anda siap. Semua modul berbagi satu database.</p>
+      <div class="mods">
+        <div class="mod-t"><i style="background:#0d9488"></i>Accounting</div>
+        <div class="mod-t"><i style="background:#0d9488"></i>Invoicing</div>
+        <div class="mod-t"><i style="background:#d97706"></i>Sales</div>
+        <div class="mod-t"><i style="background:#d97706"></i>CRM</div>
+        <div class="mod-t"><i style="background:#d97706"></i>Point of Sale</div>
+        <div class="mod-t"><i style="background:#2563eb"></i>Purchase</div>
+        <div class="mod-t"><i style="background:#2563eb"></i>Inventory</div>
+        <div class="mod-t"><i style="background:#2563eb"></i>Manufacturing</div>
+        <div class="mod-t"><i style="background:#7c3aed"></i>Employees</div>
+        <div class="mod-t"><i style="background:#7c3aed"></i>Payroll</div>
+        <div class="mod-t"><i style="background:#db2777"></i>Project</div>
+        <div class="mod-t"><i style="background:#db2777"></i>Helpdesk</div>
+        <div class="mod-t"><i style="background:#64748b"></i>Website &amp; eCommerce</div>
+        <div class="mod-t"><i style="background:#64748b"></i>Documents</div>
+      </div>
+      <div class="lokal">
+        <div class="flag" aria-hidden="true"><div style="background:#dc2626"></div><div style="background:#fff"></div></div>
+        <div>
+          <b>Disesuaikan untuk Indonesia</b>
+          <p>PPN dan PPh, format faktur pajak untuk e-Faktur/Coretax, Rupiah dan multi-mata uang, laporan keuangan sesuai kebutuhan auditor lokal, serta antarmuka berbahasa Indonesia.</p>
+        </div>
       </div>
     </div>
   </section>
 
-  <section id="platform">
+  <section id="proses">
     <div class="wrap">
-      <h2>Platform yang banyak dipakai</h2>
-      <p class="sub">Tidak ada pilihan yang terbaik untuk semua kasus. Ukuran perusahaan, industri, dan anggaran menentukan platform yang cocok.</p>
-      <div class="tbl">
-        <table>
-          <thead><tr><th>Platform</th><th>Model</th><th>Cocok untuk</th><th>Catatan</th></tr></thead>
-          <tbody>
-            <tr><td>SAP S/4HANA</td><td>Cloud &amp; on-premise</td><td>Enterprise besar, manufaktur kompleks</td><td>Berjalan di database in-memory HANA; ekosistem partner sangat luas.</td></tr>
-            <tr><td>Oracle NetSuite</td><td>SaaS</td><td>Perusahaan menengah yang tumbuh cepat</td><td>Cloud-native sejak awal, kuat di keuangan dan multi-entitas.</td></tr>
-            <tr><td>Microsoft Dynamics 365</td><td>SaaS</td><td>Menengah–besar yang memakai ekosistem Microsoft</td><td>Terhubung erat dengan Power Platform, Teams, dan Azure.</td></tr>
-            <tr><td>Odoo</td><td>Open-core, cloud/self-host</td><td>UKM, tim yang ingin mulai modular</td><td>Ratusan aplikasi modular; edisi Community gratis.</td></tr>
-            <tr><td>ERPNext</td><td>Open source, cloud/self-host</td><td>UKM, tim teknis yang ingin kontrol penuh</td><td>Dibangun di atas Frappe Framework (Python); lisensi GPL.</td></tr>
-          </tbody>
-        </table>
+      <span class="kicker">Metodologi</span>
+      <h2>Lima tahap, jelas di setiap langkah</h2>
+      <p class="sub">Setiap tahap punya hasil yang bisa Anda periksa sebelum lanjut ke tahap berikutnya. Durasi di bawah adalah perkiraan untuk proyek ukuran menengah.</p>
+      <div class="proc">
+        <div class="ph"><h3>Discovery</h3><p>Wawancara tiap departemen, pemetaan proses, dan daftar kebutuhan.</p><span class="dur">± 1–2 minggu</span></div>
+        <div class="ph"><h3>Desain solusi</h3><p>Fit-gap analysis: bagian yang memakai standar Odoo dan bagian yang perlu dikembangkan.</p><span class="dur">± 1 minggu</span></div>
+        <div class="ph"><h3>Build &amp; konfigurasi</h3><p>Setup modul, pengembangan custom, migrasi data, dan integrasi.</p><span class="dur">± 3–8 minggu</span></div>
+        <div class="ph"><h3>Uji &amp; training</h3><p>UAT dengan skenario nyata dan pelatihan per peran.</p><span class="dur">± 1–2 minggu</span></div>
+        <div class="ph"><h3>Go-live &amp; hypercare</h3><p>Cut-over saldo, pendampingan harian, lalu serah terima ke tim support.</p><span class="dur">± 2–4 minggu</span></div>
       </div>
     </div>
   </section>
 
-  <section id="integrasi">
+  <section class="alt">
     <div class="wrap">
-      <h2>Integrasi &amp; implementasi</h2>
-      <p class="sub">Penyebab utama proyek ERP gagal biasanya bukan teknologinya, melainkan data yang berantakan dan proses bisnis yang belum disepakati.</p>
-      <ol class="steps">
-        <li><div><b>Discovery &amp; desain proses</b><span>Petakan proses yang berjalan sekarang dan proses yang dituju, lalu tentukan bagian yang memakai standar dan bagian yang perlu kustomisasi.</span></div></li>
-        <li><div><b>Konfigurasi</b><span>Siapkan bagan akun, struktur organisasi, gudang, pajak, dan alur persetujuan.</span></div></li>
-        <li><div><b>Migrasi data</b><span>Bersihkan master data (pelanggan, vendor, item), lalu impor saldo awal.</span></div></li>
-        <li><div><b>Integrasi</b><span>Hubungkan e-commerce, bank, marketplace, dan aplikasi pajak lewat API atau middleware.</span></div></li>
-        <li><div><b>Uji &amp; pelatihan</b><span>Jalankan UAT dengan skenario nyata dan latih pengguna kunci di tiap departemen.</span></div></li>
-        <li><div><b>Go-live &amp; hypercare</b><span>Pilih cut-over bertahap atau sekaligus, lalu dampingi pengguna secara intensif di minggu-minggu pertama.</span></div></li>
-      </ol>
+      <span class="kicker">Industri</span>
+      <h2>Cocok untuk bisnis seperti ini</h2>
+      <p class="sub">Odoo cukup fleksibel untuk banyak model bisnis. Berikut beberapa yang paling sering membutuhkannya.</p>
+      <div class="ind">
+        <div class="card"><h3>Distribusi &amp; trading</h3><p>Banyak SKU, banyak gudang, harga berbeda per pelanggan, dan piutang yang harus dipantau ketat.</p><div class="use">Sales · Purchase · Inventory · Accounting</div></div>
+        <div class="card"><h3>Manufaktur</h3><p>Bill of materials, perintah kerja, kontrol kualitas, dan harga pokok produksi yang akurat.</p><div class="use">Manufacturing · Quality · Inventory</div></div>
+        <div class="card"><h3>Retail &amp; F&amp;B</h3><p>Kasir multi-outlet yang stok dan omzetnya langsung tercatat di kantor pusat.</p><div class="use">Point of Sale · Inventory · Accounting</div></div>
+        <div class="card"><h3>Jasa &amp; proyek</h3><p>Timesheet, penagihan per termin, dan profitabilitas tiap proyek.</p><div class="use">Project · Timesheet · Invoicing</div></div>
+      </div>
     </div>
   </section>
 
-  <section id="tren">
+  <section id="paket">
     <div class="wrap">
-      <h2>Tren yang sedang berkembang</h2>
-      <p class="sub">Arah teknologi ERP dalam beberapa tahun terakhir.</p>
-      <div class="grid">
-        <div class="card"><h3>AI agent di dalam ERP</h3><p>Asisten yang bisa membuat pesanan, mencocokkan faktur, dan menjawab pertanyaan dari data transaksi.</p></div>
-        <div class="card"><h3>Composable ERP</h3><p>Inti yang ramping, lalu fungsi lain ditambahkan lewat layanan terpisah yang terhubung melalui API.</p></div>
-        <div class="card"><h3>Clean core</h3><p>Kustomisasi dipindah keluar dari inti sistem agar upgrade tidak merusak apa pun.</p></div>
-        <div class="card"><h3>Low-code</h3><p>Tim bisnis membuat form, workflow, dan laporan sendiri tanpa menunggu developer.</p></div>
-        <div class="card"><h3>Analitik real-time</h3><p>Laporan dihitung langsung dari data transaksi tanpa proses batch semalam.</p></div>
-        <div class="card"><h3>E-invoicing &amp; kepatuhan</h3><p>Integrasi langsung dengan sistem pajak pemerintah, termasuk Coretax di Indonesia.</p></div>
+      <span class="kicker">Paket</span>
+      <h2>Mulai dari skala yang pas</h2>
+      <p class="sub">Biaya dihitung dari ruang lingkup: jumlah modul, pengguna, kustomisasi, dan integrasi. Ceritakan kebutuhan Anda dan kami kirimkan proposal tertulis.</p>
+      <div class="pk">
+        <div class="pkc">
+          <h3>Starter</h3>
+          <p class="for">UKM yang baru pindah dari Excel atau software akuntansi</p>
+          <ul>
+            <li><svg><use href="#i-check"/></svg>Hingga 4 modul inti</li>
+            <li><svg><use href="#i-check"/></svg>Konfigurasi standar Odoo</li>
+            <li><svg><use href="#i-check"/></svg>Import master data &amp; saldo awal</li>
+            <li><svg><use href="#i-check"/></svg>Training key user</li>
+            <li><svg><use href="#i-check"/></svg>Support 1 bulan setelah go-live</li>
+          </ul>
+          <a class="btn ghost" href="#kontak" data-paket="Starter">Minta proposal</a>
+        </div>
+        <div class="pkc feat">
+          <h3>Growth</h3>
+          <p class="for">Perusahaan menengah dengan beberapa departemen</p>
+          <ul>
+            <li><svg><use href="#i-check"/></svg>Modul sesuai kebutuhan</li>
+            <li><svg><use href="#i-check"/></svg>Kustomisasi laporan &amp; workflow</li>
+            <li><svg><use href="#i-check"/></svg>1–2 integrasi sistem</li>
+            <li><svg><use href="#i-check"/></svg>Training per departemen &amp; SOP</li>
+            <li><svg><use href="#i-check"/></svg>Support 3 bulan setelah go-live</li>
+          </ul>
+          <a class="btn primary" href="#kontak" data-paket="Growth">Minta proposal</a>
+        </div>
+        <div class="pkc">
+          <h3>Enterprise</h3>
+          <p class="for">Grup usaha, multi-company, atau proses yang kompleks</p>
+          <ul>
+            <li><svg><use href="#i-check"/></svg>Multi-company &amp; konsolidasi</li>
+            <li><svg><use href="#i-check"/></svg>Modul custom &amp; integrasi lanjutan</li>
+            <li><svg><use href="#i-check"/></svg>Migrasi dari ERP lama</li>
+            <li><svg><use href="#i-check"/></svg>Project manager khusus</li>
+            <li><svg><use href="#i-check"/></svg>Kontrak support dengan SLA</li>
+          </ul>
+          <a class="btn ghost" href="#kontak" data-paket="Enterprise">Minta proposal</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" class="alt">
+    <div class="wrap">
+      <span class="kicker">FAQ</span>
+      <h2>Pertanyaan yang sering muncul</h2>
+      <div class="faq" style="margin-top:28px">
+        <details><summary>Apa bedanya Odoo Community dan Enterprise?</summary><p>Community bersifat open source dan gratis lisensinya. Enterprise berbayar per pengguna dan menambahkan fitur seperti akuntansi lengkap, aplikasi mobile, studio, serta hosting Odoo.sh. Kami bantu memilih berdasarkan modul yang benar-benar Anda butuhkan.</p></details>
+        <details><summary>Berapa lama implementasinya?</summary><p>Implementasi sederhana dengan beberapa modul inti biasanya selesai dalam 1–2 bulan. Proyek dengan banyak kustomisasi atau integrasi bisa memakan 3–6 bulan. Jadwal pastinya kami tetapkan setelah tahap discovery.</p></details>
+        <details><summary>Data lama kami di Excel atau software lain, bisa dipindahkan?</summary><p>Bisa. Master data (pelanggan, vendor, produk) dan saldo awal hampir selalu dipindahkan. Untuk histori transaksi, kami tentukan bersama berapa lama ke belakang yang perlu dibawa.</p></details>
+        <details><summary>Odoo-nya di-hosting di mana?</summary><p>Ada tiga pilihan: Odoo Online (SaaS dari Odoo), Odoo.sh, atau server Anda sendiri, baik VPS maupun on-premise. Kami jelaskan untung-rugi masing-masing dari sisi biaya, kontrol, dan kemudahan upgrade.</p></details>
+        <details><summary>Kalau ada masalah setelah go-live?</summary><p>Setiap paket sudah termasuk masa pendampingan setelah go-live. Setelah itu tersedia kontrak support bulanan untuk perbaikan, penyesuaian kecil, dan pemeliharaan server.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section id="kontak">
+    <div class="wrap">
+      <div class="contact">
+        <div>
+          <span class="kicker">Kontak</span>
+          <h2>Ceritakan proses bisnis Anda</h2>
+          <p>Sesi konsultasi pertama gratis. Kami dengarkan alur kerja Anda dan sampaikan secara jujur apakah Odoo cocok untuk kebutuhan itu.</p>
+          <a class="mail" href="mailto:ags@agzent.my.id"><svg><use href="#i-mail"/></svg>ags@agzent.my.id</a>
+        </div>
+        <form id="f" novalidate>
+          <div class="row">
+            <label>Nama<input name="nama" required autocomplete="name"></label>
+            <label>Perusahaan<input name="perusahaan" autocomplete="organization"></label>
+          </div>
+          <div class="row">
+            <label>Email<input name="email" type="email" required autocomplete="email"></label>
+            <label>Minat paket
+              <select name="paket" id="paket">
+                <option>Belum tahu</option><option>Starter</option><option>Growth</option><option>Enterprise</option><option>Support saja</option>
+              </select>
+            </label>
+          </div>
+          <label>Kebutuhan<textarea name="pesan" placeholder="Contoh: distributor 3 gudang, saat ini pakai Excel, ingin stok dan piutang real-time."></textarea></label>
+          <button class="btn light" type="submit" style="justify-self:start">Kirim lewat email</button>
+          <p class="note">Tombol ini membuka aplikasi email Anda dengan pesan yang sudah terisi.</p>
+        </form>
       </div>
     </div>
   </section>
@@ -183,9 +460,24 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
 <footer>
   <div class="wrap">
     <span>© 2026 Agzent · agzent.my.id</span>
-    <span>Catatan seputar teknologi ERP</span>
+    <span><a href="/wawasan-erp.html">Wawasan ERP</a> · <a href="mailto:ags@agzent.my.id">ags@agzent.my.id</a></span>
+    <span class="tm">Odoo adalah merek dagang milik Odoo S.A. Agzent adalah penyedia jasa independen dan tidak berafiliasi dengan Odoo S.A.</span>
   </div>
 </footer>
 
+<script>
+document.querySelectorAll('[data-paket]').forEach(function(a){
+  a.addEventListener('click',function(){document.getElementById('paket').value=a.dataset.paket;});
+});
+document.getElementById('f').addEventListener('submit',function(e){
+  e.preventDefault();
+  var d=new FormData(this);
+  if(!d.get('nama')||!d.get('email')){alert('Mohon isi nama dan email.');return;}
+  var subj='Konsultasi Odoo — '+(d.get('perusahaan')||d.get('nama'));
+  var body='Nama: '+d.get('nama')+'\nPerusahaan: '+(d.get('perusahaan')||'-')+'\nEmail: '+d.get('email')+
+    '\nMinat paket: '+d.get('paket')+'\n\nKebutuhan:\n'+(d.get('pesan')||'-');
+  location.href='mailto:ags@agzent.my.id?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(body);
+});
+</script>
 </body>
 </html>
