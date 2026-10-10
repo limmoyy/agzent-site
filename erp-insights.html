@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERP Insights — Agzent</title>
+<meta name="description" content="ERP Insights by Agzent: core modules, architecture, platforms, implementation, and current trends.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230f766e'/><path d='M9 22 16 9l7 13M11.5 17.5h9' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<style>
+:root{
+  --bg:#f7f8f6;--surface:#ffffff;--ink:#14201d;--muted:#5b6965;--line:#e2e6e3;
+  --accent:#0f766e;--accent-soft:#e3f2ef;--warm:#b45309;
+  --radius:14px;--max:1080px;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0d1412;--surface:#141d1a;--ink:#e6eeeb;--muted:#93a39e;--line:#24302c;
+    --accent:#2dd4bf;--accent-soft:#12302b;--warm:#f59e0b;}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+header.top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:16px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;color:var(--ink);text-decoration:none}
+.brand i{width:28px;height:28px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:#fff;font-style:normal;font-size:15px}
+nav{display:flex;gap:18px;font-size:14px;overflow-x:auto}
+nav a{color:var(--muted);text-decoration:none;white-space:nowrap}
+nav a:hover{color:var(--ink)}
+.hero{padding:84px 0 56px}
+.eyebrow{display:inline-block;font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:4px 10px;border-radius:99px}
+h1{font-size:clamp(34px,6vw,56px);line-height:1.08;letter-spacing:-.03em;margin:18px 0 18px;max-width:16ch}
+.lead{font-size:clamp(17px,2.2vw,20px);color:var(--muted);max-width:60ch;margin:0}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.btn{display:inline-block;padding:11px 18px;border-radius:10px;font-weight:600;text-decoration:none;font-size:15px}
+.btn.primary{background:var(--accent);color:#fff}
+@media (prefers-color-scheme:dark){.btn.primary{color:#04201c}}
+.btn.ghost{border:1px solid var(--line);color:var(--ink)}
+section{padding:56px 0;border-top:1px solid var(--line)}
+h2{font-size:clamp(24px,3.4vw,32px);letter-spacing:-.02em;margin:0 0 8px}
+.sub{color:var(--muted);margin:0 0 30px;max-width:62ch}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+.card h3{margin:0 0 6px;font-size:17px}
+.card p{margin:0;color:var(--muted);font-size:15px}
+.tag{font-size:12px;font-weight:600;color:var(--warm);text-transform:uppercase;letter-spacing:.06em}
+/* architecture diagram */
+.stack{display:grid;gap:10px}
+.layer{display:grid;grid-template-columns:170px 1fr;gap:16px;align-items:center;background:var(--surface);
+  border:1px solid var(--line);border-radius:12px;padding:14px 18px}
+.layer b{font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips span{font-size:13px;background:var(--accent-soft);color:var(--ink);padding:3px 9px;border-radius:7px}
+@media (max-width:640px){.layer{grid-template-columns:1fr;gap:8px}}
+/* table */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:15px}
+th,td{text-align:left;padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:600;white-space:nowrap}
+/* steps */
+ol.steps{list-style:none;padding:0;margin:0;display:grid;gap:12px;counter-reset:s}
+ol.steps li{counter-increment:s;display:grid;grid-template-columns:40px 1fr;gap:14px;background:var(--surface);
+  border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+ol.steps li::before{content:counter(s);width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;
+  display:grid;place-items:center;font-weight:700;font-size:14px}
+@media (prefers-color-scheme:dark){ol.steps li::before{color:#04201c}}
+ol.steps b{display:block}
+ol.steps span{color:var(--muted);font-size:15px}
+footer{border-top:1px solid var(--line);padding:30px 0 40px;color:var(--muted);font-size:14px}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/"><i>A</i>Agzent</a>
+    <nav>
+      <a href="#modules">Modules</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#platforms">Platforms</a>
+      <a href="#implementation">Implementation</a>
+      <a href="#trends">Trends</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <span class="eyebrow">ERP Insights</span>
+    <h1>One system for every business process.</h1>
+    <p class="lead">Enterprise Resource Planning (ERP) brings finance, inventory, purchasing, sales, manufacturing, and HR together in a single database. This page summarizes how it works, which platforms exist, and where the technology is heading.</p>
+    <div class="cta">
+      <a class="btn primary" href="#modules">Start with the core modules</a>
+      <a class="btn ghost" href="/">Back to Agzent</a>
+    </div>
+  </div>
+
+  <section id="modules">
+    <div class="wrap">
+      <h2>Core ERP modules</h2>
+      <p class="sub">Every module reads from and writes to the same data, so a sales invoice reduces stock and posts to the general ledger at once, with no re-entry.</p>
+      <div class="grid">
+        <div class="card"><span class="tag">Finance</span><h3>Finance &amp; Accounting</h3><p>General ledger, payables and receivables, fixed assets, bank reconciliation, and financial statements.</p></div>
+        <div class="card"><span class="tag">SCM</span><h3>Supply Chain</h3><p>Multi-warehouse inventory, purchasing, material requirements planning (MRP), and logistics.</p></div>
+        <div class="card"><span class="tag">Sales</span><h3>Sales &amp; CRM</h3><p>Quotations, orders, billing, pricelists, and customer history.</p></div>
+        <div class="card"><span class="tag">MFG</span><h3>Manufacturing</h3><p>Bills of materials, work orders, routings, quality control, and production costing.</p></div>
+        <div class="card"><span class="tag">HCM</span><h3>HR &amp; Payroll</h3><p>Employee records, attendance, leave, payroll, and income tax.</p></div>
+        <div class="card"><span class="tag">BI</span><h3>Analytics</h3><p>Dashboards, KPIs, and cross-module reports drawn from a single source of data.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture">
+    <div class="wrap">
+      <h2>Modern ERP architecture</h2>
+      <p class="sub">Today's ERP is usually a layered web application that runs in the cloud and opens up to other systems through APIs.</p>
+      <div class="stack">
+        <div class="layer"><b>Interface</b><div class="chips"><span>Web app</span><span>Mobile</span><span>Customer/vendor portal</span><span>AI assistant</span></div></div>
+        <div class="layer"><b>Integration</b><div class="chips"><span>REST / OData</span><span>GraphQL</span><span>Webhooks</span><span>EDI</span><span>Message queues</span></div></div>
+        <div class="layer"><b>Business logic</b><div class="chips"><span>Workflows &amp; approvals</span><span>Tax rules</span><span>Journal posting</span><span>Customizations / extensions</span></div></div>
+        <div class="layer"><b>Data</b><div class="chips"><span>Relational database</span><span>In-memory (e.g. SAP HANA)</span><span>Data warehouse</span></div></div>
+        <div class="layer"><b>Infrastructure</b><div class="chips"><span>Multi-tenant SaaS</span><span>Private cloud</span><span>On-premise</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="platforms">
+    <div class="wrap">
+      <h2>Widely used platforms</h2>
+      <p class="sub">No platform is best for every case. Company size, industry, and budget decide which one fits.</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Platform</th><th>Model</th><th>Best for</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>SAP S/4HANA</td><td>Cloud &amp; on-premise</td><td>Large enterprises, complex manufacturing</td><td>Runs on the in-memory HANA database; very large partner ecosystem.</td></tr>
+            <tr><td>Oracle NetSuite</td><td>SaaS</td><td>Fast-growing mid-sized companies</td><td>Cloud-native from the start, strong in finance and multi-entity setups.</td></tr>
+            <tr><td>Microsoft Dynamics 365</td><td>SaaS</td><td>Mid-to-large firms on the Microsoft stack</td><td>Tightly connected to Power Platform, Teams, and Azure.</td></tr>
+            <tr><td>Odoo</td><td>Open-core, cloud/self-hosted</td><td>SMBs, teams that want to start modular</td><td>Hundreds of modular apps; the Community edition is free.</td></tr>
+            <tr><td>ERPNext</td><td>Open source, cloud/self-hosted</td><td>SMBs, technical teams that want full control</td><td>Built on the Frappe Framework (Python); GPL licensed.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="implementation">
+    <div class="wrap">
+      <h2>Integration &amp; implementation</h2>
+      <p class="sub">ERP projects rarely fail because of the technology. They fail because of messy data and business processes nobody agreed on.</p>
+      <ol class="steps">
+        <li><div><b>Discovery &amp; process design</b><span>Map current and target processes, then decide what stays standard and what needs customizing.</span></div></li>
+        <li><div><b>Configuration</b><span>Set up the chart of accounts, org structure, warehouses, taxes, and approval flows.</span></div></li>
+        <li><div><b>Data migration</b><span>Clean the master data (customers, vendors, items), then import opening balances.</span></div></li>
+        <li><div><b>Integration</b><span>Connect e-commerce, banks, marketplaces, and tax applications through APIs or middleware.</span></div></li>
+        <li><div><b>Testing &amp; training</b><span>Run UAT with real scenarios and train key users in every department.</span></div></li>
+        <li><div><b>Go-live &amp; hypercare</b><span>Choose a phased or big-bang cut-over, then support users closely during the first weeks.</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="trends">
+    <div class="wrap">
+      <h2>Emerging trends</h2>
+      <p class="sub">Where ERP technology has been heading in recent years.</p>
+      <div class="grid">
+        <div class="card"><h3>AI agents inside ERP</h3><p>Assistants that create orders, match invoices, and answer questions from transaction data.</p></div>
+        <div class="card"><h3>Composable ERP</h3><p>A lean core, with other functions added as separate services connected through APIs.</p></div>
+        <div class="card"><h3>Clean core</h3><p>Customizations move out of the core so upgrades don't break anything.</p></div>
+        <div class="card"><h3>Low-code</h3><p>Business teams build their own forms, workflows, and reports without waiting for developers.</p></div>
+        <div class="card"><h3>Real-time analytics</h3><p>Reports are computed straight from transaction data, with no overnight batch jobs.</p></div>
+        <div class="card"><h3>E-invoicing &amp; compliance</h3><p>Direct integration with government tax systems, including Coretax in Indonesia.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Agzent · agzent.my.id</span>
+    <span><a href="/">Odoo ERP consulting</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
