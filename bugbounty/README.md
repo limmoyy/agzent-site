@@ -59,18 +59,35 @@ GitHub Pages serves the update within a minute or two.
 | `status` | `active` · `paused` · `archived` (controls the badge + sort order). |
 | `type` | free label, e.g. `Bug Bounty`, `VDP`, `Private invite`. |
 | `tags` | array of strings → become filter chips + search terms. |
-| `added` | date you added it (`YYYY-MM-DD`). |
+| `added` | date you added it to the vault (`YYYY-MM-DD`). |
+| `published` | when the **program/source itself** was released or last updated — ISO 8601 (`2024-05-01`, or with time `2024-05-01T14:00Z`). Shown as "Released …" and drives the Newest/Oldest sort. |
 | **`source`** | **where the program came from** — `{ platform, url, policyUrl, discovered }`. |
 | `summary` | short paragraph shown on the card and at the top of the detail. |
 | `rewards` | `{ low, medium, high, critical, notes }` — any subset; strings. |
 | **`scope`** | `{ in: [...], out: [...] }`, each row `{ asset, type, notes }`. |
 | **`submission`** | **how to submit** — `{ how, url, email, sla, language }`. |
-| **`reportTemplate`** | ordered array of fields a report must contain. A plain string gets an automatic HackerOne-style hint; use `["Field","custom hint"]` to override. |
+| **`reportTemplate`** | ordered array of the fields a report must contain **for this specific program**. See the note below — this is NOT a fixed list. A plain string gets an automatic HackerOne-style hint; use `["Field","custom hint"]` to override. |
 | `policy` | disclosure rules / testing rules (plain text, line breaks kept). |
 | `safeHarbor` | one line about legal safe harbor. |
 
 Only `id` is strictly required; every section hides itself when empty. Copy the
 `_template` entry in `programs.sample.json` as a starting point.
+
+### `reportTemplate` — curate it per program, don't pad to a fixed count
+Different programs ask for different things. **Fetch the program's actual policy /
+report page** (`source.url` / `source.policyUrl`), read what *that* program
+requires in a submission, and list only those fields in the order they want
+them. Real forms are usually **4–8 fields**, sometimes 3, sometimes more — never
+assume a fixed "always 10" set. If a program mandates a CVSS vector, a specific
+title format, or a PoC video, encode that as a hint: `["Severity","CVSS 3.1
+vector required"]`. If the page lists nothing special, a short default
+(Title → Steps to reproduce → PoC → Impact → Severity) is fine.
+
+### Browsing
+The viewer has search, tag-chip filters, and a sort control
+(**Newest / Oldest / Highest reward / A–Z**). Newest/Oldest use `published`
+(falling back to `added`), and reward sort reads the largest number in
+`rewards`. Fill those fields so sorting is meaningful.
 
 ### Where to source programs
 Pull from the public program lists on **HackerOne**, **Bugcrowd**,

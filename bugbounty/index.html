@@ -86,6 +86,8 @@ h3{font-size:16px;font-weight:700;letter-spacing:-.01em}
 .chip{font:600 13px var(--body);padding:10px 15px;border-radius:99px;border:1px solid var(--line);
   background:var(--paper);cursor:pointer;transition:all .2s}
 .chip.active{background:var(--espresso);color:var(--cream);border-color:var(--espresso)}
+.sortsel{font:600 13px var(--body);padding:10px 14px;border-radius:99px;border:1px solid var(--line);background:var(--paper);cursor:pointer;color:var(--ink);outline:none}
+.sortsel:focus{border-color:var(--mocha)}
 
 /* ---------- program grid ---------- */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:22px 0 60px}
@@ -96,6 +98,7 @@ h3{font-size:16px;font-weight:700;letter-spacing:-.01em}
 .card h3{font-size:19px}
 .card .org{font-size:13px;color:var(--muted);margin-top:2px}
 .card .desc{font-size:14px;color:var(--ink);opacity:.88;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card .when{font:600 12px var(--mono);color:var(--muted)}
 .card .foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto;padding-top:6px}
 .tags{display:flex;gap:5px;flex-wrap:wrap}
 .pill{font:600 11px var(--body);padding:4px 9px;border-radius:99px;background:var(--cream);border:1px solid var(--line);color:var(--muted)}
@@ -208,6 +211,12 @@ table.scope tr:last-child td{border-bottom:0}
           <input id="q" placeholder="Search programs, orgs, assets, tags…" oninput="render()">
         </div>
         <div class="filters" id="filters"></div>
+        <select class="sortsel" id="sort" onchange="render()" aria-label="Sort programs">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="reward">Highest reward</option>
+          <option value="name">A–Z</option>
+        </select>
       </div>
     </section>
     <section class="wrap"><div class="grid" id="grid"></div></section>
@@ -299,8 +308,11 @@ function render(){
       ...((p.scope&&p.scope.in)||[]).map(s=>s.asset)].join(' ').toLowerCase();
     return hay.includes(q);
   });
-  const order={active:0,paused:1,archived:2};
-  items.sort((a,b)=>(order[a.status]??1)-(order[b.status]??1) || a.name.localeCompare(b.name));
+  const s=($('sort')||{}).value||'newest';
+  if(s==='reward') items.sort((a,b)=>rewardVal(b)-rewardVal(a)||a.name.localeCompare(b.name));
+  else if(s==='name') items.sort((a,b)=>a.name.localeCompare(b.name));
+  else if(s==='oldest') items.sort((a,b)=>progDate(a)-progDate(b)||a.name.localeCompare(b.name));
+  else items.sort((a,b)=>progDate(b)-progDate(a)||a.name.localeCompare(b.name));
   const g=$('grid');
   if(!items.length){ g.innerHTML='<div class="empty">No programs match. Hermes can add one by editing the data file.</div>'; return; }
   g.innerHTML = items.map(p=>{
@@ -311,6 +323,7 @@ function render(){
         <span class="status ${esc(p.status||'active')}"><i></i>${esc(p.status||'active')}</span>
       </div>
       <p class="desc">${esc(p.summary||'')}</p>
+      ${p.published?`<div class="when">Released ${esc(fmtDate(p.published))}</div>`:''}
       <div class="foot">
         <div class="tags">${(p.tags||[]).slice(0,3).map(t=>`<span class="pill">${esc(t)}</span>`).join('')}</div>
         ${top?`<span class="reward">${esc(top)}</span>`:''}
@@ -358,6 +371,7 @@ function showDetail(id){
       <span class="status ${esc(p.status||'active')}"><i></i>${esc(p.status||'active')}</span>
       ${src.platform?`<span class="pill">Source: ${esc(src.platform)}</span>`:''}
       ${p.type?`<span class="pill">${esc(p.type)}</span>`:''}
+      ${p.published?`<span class="pill">Released ${esc(fmtDate(p.published))}</span>`:''}
       ${p.added?`<span class="pill">Added ${esc(p.added)}</span>`:''}
       ${(p.tags||[]).map(t=>`<span class="pill">${esc(t)}</span>`).join('')}
     </div>
@@ -373,6 +387,7 @@ function showDetail(id){
       <h2><span class="ic">${IC.where}</span>Where this came from</h2>
       <dl class="kv">
         <dt>Platform</dt><dd>${esc(src.platform||'—')}</dd>
+        ${p.published?`<dt>Released</dt><dd>${esc(fmtDate(p.published))}</dd>`:''}
         ${src.url?`<dt>Link</dt><dd><a href="${esc(src.url)}" target="_blank" rel="noopener noreferrer">${esc(src.url)}</a></dd>`:''}
         ${src.discovered?`<dt>Discovered</dt><dd>${esc(src.discovered)}</dd>`:''}
         ${src.policyUrl?`<dt>Policy page</dt><dd><a href="${esc(src.policyUrl)}" target="_blank" rel="noopener noreferrer">${esc(src.policyUrl)}</a></dd>`:''}
@@ -436,6 +451,11 @@ const IC = {
 
 /* ---------------- util ---------------- */
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function progDate(p){ const d=Date.parse(p.published||p.added||''); return isNaN(d)?0:d; }
+function rewardVal(p){ const r=p.rewards||{}; const s=r.critical||r.high||r.medium||r.low||''; const n=parseInt(String(s).replace(/[^0-9]/g,''),10); return isNaN(n)?-1:n; }
+function fmtDate(s){ if(!s) return ''; const hasTime=/[T ]\d\d:/.test(String(s)); const d=new Date(s); if(isNaN(d)) return s;
+  const o={year:'numeric',month:'short',day:'numeric'}; if(hasTime){o.hour='2-digit';o.minute='2-digit';}
+  try{ return d.toLocaleString('en-GB',o); }catch(_){ return s; } }
 </script>
 </body>
 </html>

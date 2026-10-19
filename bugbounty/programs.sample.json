@@ -7,6 +7,7 @@
       "org": "Organisation name",
       "status": "archived",
       "type": "Bug Bounty",
+      "published": "2024-05-01",
       "added": "2026-10-19",
       "tags": ["template"],
       "source": {
@@ -42,15 +43,10 @@
       },
       "reportTemplate": [
         "Title",
-        "Summary",
-        "Vulnerability type",
-        "Affected asset",
         "Steps to reproduce",
         "Proof of concept",
         "Impact",
-        "Severity",
-        "Remediation",
-        "Supporting material"
+        "Severity"
       ],
       "policy": "Only test assets listed in scope. No automated scanning without permission. Do not access, modify, or exfiltrate data that is not yours — use test accounts. Stop at proof-of-concept. Report promptly and keep details private until a fix ships.",
       "safeHarbor": "Good-faith research under these rules is authorised and will not be pursued legally. Confirm the exact safe-harbor wording on the source page before testing."
