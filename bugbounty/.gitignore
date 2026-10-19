@@ -1,0 +1,3 @@
+# Plaintext directory data is the private source of truth — never publish it.
+# Only the encrypted programs.enc.json is committed.
+programs.json

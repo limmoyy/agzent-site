@@ -1,0 +1,59 @@
+{
+  "updated": "2026-10-19",
+  "programs": [
+    {
+      "id": "_template",
+      "name": "— TEMPLATE — copy me for a new program",
+      "org": "Organisation name",
+      "status": "archived",
+      "type": "Bug Bounty",
+      "added": "2026-10-19",
+      "tags": ["template"],
+      "source": {
+        "platform": "HackerOne / Bugcrowd / Intigriti / self-hosted",
+        "url": "https://hackerone.com/example",
+        "policyUrl": "https://example.com/.well-known/security.txt",
+        "discovered": "Where/how you found this program"
+      },
+      "summary": "One short paragraph: what the program covers and why it is here. This text is searchable and shown on the card.",
+      "rewards": {
+        "low": "$50",
+        "medium": "$250",
+        "high": "$1,000",
+        "critical": "$5,000+",
+        "notes": "Amounts are indicative — always confirm on the source policy page."
+      },
+      "scope": {
+        "in": [
+          { "asset": "*.example.com", "type": "Domain", "notes": "All production subdomains" },
+          { "asset": "com.example.app (Android)", "type": "Mobile", "notes": "Latest Play Store build" }
+        ],
+        "out": [
+          { "asset": "blog.example.com", "notes": "Third-party hosted" },
+          { "asset": "Denial of Service", "notes": "Any volumetric / rate-limit testing" }
+        ]
+      },
+      "submission": {
+        "how": "Submit a report through the platform intake form.",
+        "url": "https://hackerone.com/example/reports/new",
+        "email": "",
+        "sla": "First response within 3 business days",
+        "language": "English"
+      },
+      "reportTemplate": [
+        "Title",
+        "Summary",
+        "Vulnerability type",
+        "Affected asset",
+        "Steps to reproduce",
+        "Proof of concept",
+        "Impact",
+        "Severity",
+        "Remediation",
+        "Supporting material"
+      ],
+      "policy": "Only test assets listed in scope. No automated scanning without permission. Do not access, modify, or exfiltrate data that is not yours — use test accounts. Stop at proof-of-concept. Report promptly and keep details private until a fix ships.",
+      "safeHarbor": "Good-faith research under these rules is authorised and will not be pursued legally. Confirm the exact safe-harbor wording on the source page before testing."
+    }
+  ]
+}
