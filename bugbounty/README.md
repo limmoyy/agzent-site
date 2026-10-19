@@ -97,20 +97,31 @@ sorting and filtering are meaningful.
 
 ### The X mark (do not execute)
 
-Every card carries an **X** button. Clicking it marks that program **X — skip**:
-the card dims, the badge becomes `X — skip`, the entry drops out of **⚡ Auto**
-into **✋ Manual**, and it gets its own entry in the progress filter. Marks are
-kept in the browser's `localStorage`, because the site is static — a click cannot
-write back to the vault by itself.
+A program becomes **X — skip** two ways:
+
+- **Automatic.** `added` is more than **3 days** old. A program that has sat in
+  the list past its working window is stale — someone else has almost certainly
+  worked it — so it flips to X on its own. The badge reads
+  `X — auto >3 hari`. Day 3 is still inside the window; day 4 is out.
+- **Manual.** You press the **X** button (old program, or already worked by
+  another hunter). The badge reads `X — skip`.
+
+Either way the card dims, the entry drops out of **⚡ Auto** into **✋ Manual**,
+and it gets its own entry in the progress filter. **Your click always wins**: X
+on an auto-X card pins it back in, X on a live card pins it out. So if a stale
+program is actually still worth doing, one click rescues it.
+
+Marks are kept in the browser's `localStorage`, because the site is static — a
+click cannot write back to the vault by itself.
 
 To hand the marks to the agent, press **Kirim ke Telegram** — it opens
 Telegram's share sheet with the line pre-filled, so you only pick the agent chat
 and hit send. **Salin daftar X** copies the same line
 (`X range, priors, strise`) if you would rather paste it; send it and the agent
 sets `workStatus: "skipped"` on those entries, re-encrypts and pushes — so the
-mark becomes permanent and shows up on every device.
+mark becomes permanent and shows up on every device. The copied line contains
+both kinds, so the auto ones become permanent too.
 
-Use it for a program that is **old**, or **already worked by another hunter**.
 A `skipped` entry is never executed, never auto-eligible, and never picked as the
 next target.
 

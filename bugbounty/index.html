@@ -289,31 +289,81 @@ const WSTATES = ['new','queued','in_progress','submitted','resolved','blocked','
 const WLABEL = {new:'New', queued:'Queued', in_progress:'In progress', submitted:'Submitted', resolved:'Resolved', blocked:'Needs registration', skipped:'X — skip'};
 function wstat(p){ const w=(p.workStatus||'new'); return WSTATES.includes(w)?w:'new'; }
 
-/* ---- X marks: your clicks, kept in this browser, override the data ---- */
+/* ---- X marks ---------------------------------------------------------
+   A program becomes X two ways:
+     * automatic - `added` is older than MAX_AGE_DAYS, so it has sat past its
+       working window
+     * manual    - you pressed X (old program, or already worked by someone else)
+   Your click always wins: X on an auto-X card pins it back in ('keep'), X on a
+   live card pins it out ('skip'). */
 let openId = null;
-const SKIP_KEY = 'agz_bb_skipped';
-function skipSet(){ try{ return new Set(JSON.parse(localStorage.getItem(SKIP_KEY)||'[]')); }catch(_){ return new Set(); } }
-function saveSkip(s){ try{ localStorage.setItem(SKIP_KEY, JSON.stringify([...s])); }catch(_){} }
-function isSkipped(p){ return wstat(p)==='skipped' || skipSet().has(p.id); }
+const MAX_AGE_DAYS = 3;                 // "udah diatas 3 hari -> X otomatis"
+const MARKS_KEY = 'agz_bb_marks';       // {id: 'skip'|'keep'}
+const SKIP_KEY  = 'agz_bb_skipped';     // legacy list, migrated on read
+
+function marks(){
+  let m = {};
+  try{ m = JSON.parse(localStorage.getItem(MARKS_KEY)||'{}')||{}; }catch(_){ m = {}; }
+  try{
+    const old = JSON.parse(localStorage.getItem(SKIP_KEY)||'[]');
+    if(Array.isArray(old) && old.length){
+      old.forEach(id=>{ if(!m[id]) m[id]='skip'; });
+      localStorage.setItem(MARKS_KEY, JSON.stringify(m));
+      localStorage.removeItem(SKIP_KEY);
+    }
+  }catch(_){}
+  return m;
+}
+function saveMarks(m){ try{ localStorage.setItem(MARKS_KEY, JSON.stringify(m)); }catch(_){} }
+function progAgeDays(p){
+  const a = p && p.added;
+  if(!a) return null;
+  const d = new Date(String(a).slice(0,10) + 'T00:00:00');
+  if(isNaN(d)) return null;
+  const now = new Date();
+  const t0 = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const t1 = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  return Math.floor((t0 - t1) / 86400000);
+}
+function autoSkipped(p){ const a = progAgeDays(p); return a !== null && a > MAX_AGE_DAYS; }
+function skipReason(p){                 // 'manual' | 'auto' | null
+  if(!p) return null;
+  const m = marks()[p.id];
+  if(m === 'skip') return 'manual';
+  if(m === 'keep') return null;
+  if(wstat(p) === 'skipped') return 'manual';
+  if(autoSkipped(p)) return 'auto';
+  return null;
+}
+function isSkipped(p){ return skipReason(p) !== null; }
+function skippedProgs(){ return (DATA.programs||[]).filter(isSkipped); }
 function effStat(p){ return isSkipped(p) ? 'skipped' : wstat(p); }
 function toggleSkip(id, ev){
   if(ev){ ev.preventDefault(); ev.stopPropagation(); }
-  const s = skipSet();
-  if(s.has(id)) s.delete(id); else s.add(id);
-  saveSkip(s);
+  const p = (DATA.programs||[]).find(x=>x.id===id);
+  const m = marks();
+  m[id] = isSkipped(p) ? 'keep' : 'skip';   // flip the operator's decision
+  saveMarks(m);
   buildWorkFilters(); render();
   if(openId) showDetail(openId);
-  const note = $('xnote');
-  if(note) note.textContent = skipSet().size
-    ? skipSet().size + ' program ditandai X. Tekan "Salin daftar X" terus kirim ke agent.'
-    : 'Belum ada yang ditandai X.';
+  updateXNote();
 }
+function updateXNote(){
+  const note = $('xnote'); if(!note) return;
+  const sk = skippedProgs();
+  const auto = sk.filter(p=>skipReason(p)==='auto').length;
+  note.textContent = sk.length
+    ? sk.length + ' program X (' + (sk.length-auto) + ' manual, ' + auto +
+      ' otomatis >' + MAX_AGE_DAYS + ' hari). Kirim ke agent biar permanen.'
+    : 'Belum ada yang ditandai X. Program yang lewat ' + MAX_AGE_DAYS + ' hari otomatis jadi X.';
+}
+function xListText(){ return 'X ' + skippedProgs().map(p=>p.id).join(', '); }
 function copySkipList(){
   const note = $('xnote');
-  const ids = (DATA.programs||[]).filter(p=>skipSet().has(p.id)).map(p=>p.id);
-  if(!ids.length){ note.textContent = 'Belum ada yang ditandai X — klik X di kartu dulu.'; return; }
-  const text = 'X ' + ids.join(', ');
-  const done = () => { note.textContent = 'Tersalin ' + ids.length + ' program — kirim baris itu ke agent.'; };
+  const sk = skippedProgs();
+  if(!sk.length){ note.textContent = 'Belum ada yang ditandai X.'; return; }
+  const text = xListText();
+  const done = () => { note.textContent = 'Tersalin ' + sk.length + ' program — kirim baris itu ke agent.'; };
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(text).then(done, () => { prompt('Copy manual:', text); });
   } else {
@@ -322,15 +372,25 @@ function copySkipList(){
 }
 function sendSkipList(){
   const note = $('xnote');
-  const ids = (DATA.programs||[]).filter(p=>skipSet().has(p.id)).map(p=>p.id);
-  if(!ids.length){ note.textContent = 'Belum ada yang ditandai X — klik X di kartu dulu.'; return; }
-  const text = 'X ' + ids.join(', ');
+  const sk = skippedProgs();
+  if(!sk.length){ note.textContent = 'Belum ada yang ditandai X.'; return; }
   const url = 'https://t.me/share/url?url=' + encodeURIComponent(location.href)
-            + '&text=' + encodeURIComponent(text);
+            + '&text=' + encodeURIComponent(xListText());
   window.open(url, '_blank', 'noopener');
-  note.textContent = ids.length + ' program dikirim ke Telegram — pilih chat agent, terus kirim.';
+  note.textContent = sk.length + ' program dikirim ke Telegram — pilih chat agent, terus kirim.';
 }
-function wstatBadge(p){ const w=effStat(p); return `<span class="wstat ${w}"><i></i>${esc(WLABEL[w]||w)}</span>`; }
+function wstatBadge(p){
+  const w = effStat(p);
+  if(w === 'skipped'){
+    const r = skipReason(p);
+    const lbl = r === 'auto' ? ('X — auto >' + MAX_AGE_DAYS + ' hari') : 'X — skip';
+    const tip = r === 'auto'
+      ? 'Otomatis: program sudah lewat ' + MAX_AGE_DAYS + ' hari. Klik X kalau mau dipakai lagi.'
+      : 'Ditandai X manual — agent tidak mengeksekusi ini.';
+    return `<span class="wstat skipped" title="${tip}"><i></i>${esc(lbl)}</span>`;
+  }
+  return `<span class="wstat ${w}"><i></i>${esc(WLABEL[w]||w)}</span>`;
+}
 function autoEligible(p){
   if(isSkipped(p)) return false;
   if(p.auto===true) return true;
@@ -380,7 +440,7 @@ function boot(){
   const auth = DATA.authorizedPlatforms || [];
   $('authLine').innerHTML = '<b>⚡ Auto-run channels:</b> email' + (auth.length? ' + ' + auth.map(esc).join(', ') : '') +
     '. Programs on any other platform stay <b>✋ Manual</b> — register first, then tell your agent.';
-  buildFilters(); buildWorkFilters(); render(); showList();
+  buildFilters(); buildWorkFilters(); render(); updateXNote(); showList();
 }
 function buildWorkFilters(){
   const present = new Set((DATA.programs||[]).map(effStat));
@@ -492,10 +552,13 @@ function showDetail(id){
       <h2><span class="ic">${IC.flag}</span>Progress &amp; execution</h2>
       <dl class="kv">
         <dt>My status</dt><dd>${esc(WLABEL[effStat(p)]||effStat(p))}</dd>
+        ${progAgeDays(p)!==null?`<dt>Umur</dt><dd>${progAgeDays(p)} hari${autoSkipped(p)?' — lewat batas '+MAX_AGE_DAYS+' hari, otomatis X':''}</dd>`:''}
         <dt>Auto-execute</dt><dd>${autoEligible(p)
           ? 'Eligible — submits via email or a platform the agent is already authorised on. Agent may run this autonomously (one program at a time).'
           : 'Manual — this channel/platform is not on your authorised list yet. Register it yourself, then tell the agent before it runs this.'}</dd>
-        ${isSkipped(p)?`<dt>Excluded</dt><dd>Ditandai X — agent tidak akan mengeksekusi program ini (old, atau sudah dikerjakan hunter lain).</dd>`:''}
+        ${isSkipped(p)?`<dt>Excluded</dt><dd>${skipReason(p)==='auto'
+          ? 'X otomatis — program sudah lewat '+MAX_AGE_DAYS+' hari sejak ditambahkan, jadi di luar jendela kerja. Agent tidak akan mengeksekusi ini. Klik X kalau mau dipakai lagi.'
+          : 'Ditandai X manual — agent tidak akan mengeksekusi program ini (old, atau sudah dikerjakan hunter lain).'}</dd>`:''}
         ${sub.channel?`<dt>Channel</dt><dd>${esc(sub.channel)}</dd>`:''}
         ${p.outcome?`<dt>Outcome</dt><dd>${esc(p.outcome)}</dd>`:''}
         ${p.workNote?`<dt>Note</dt><dd>${esc(p.workNote)}</dd>`:''}
