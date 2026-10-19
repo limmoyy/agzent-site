@@ -249,6 +249,7 @@ table.scope tr:last-child td{border-bottom:0}
       <div class="filters wfilters" id="wfilters"></div>
       <div class="xbar">
         <button class="xcopy" onclick="copySkipList()">Salin daftar X</button>
+        <button class="xcopy" onclick="sendSkipList()">Kirim ke Telegram</button>
         <span class="xnote" id="xnote">Klik X di kartu buat nandain program yang jangan dieksekusi (old, atau udah dikerjain hunter lain).</span>
       </div>
     </section>
@@ -318,6 +319,16 @@ function copySkipList(){
   } else {
     prompt('Copy manual:', text);
   }
+}
+function sendSkipList(){
+  const note = $('xnote');
+  const ids = (DATA.programs||[]).filter(p=>skipSet().has(p.id)).map(p=>p.id);
+  if(!ids.length){ note.textContent = 'Belum ada yang ditandai X — klik X di kartu dulu.'; return; }
+  const text = 'X ' + ids.join(', ');
+  const url = 'https://t.me/share/url?url=' + encodeURIComponent(location.href)
+            + '&text=' + encodeURIComponent(text);
+  window.open(url, '_blank', 'noopener');
+  note.textContent = ids.length + ' program dikirim ke Telegram — pilih chat agent, terus kirim.';
 }
 function wstatBadge(p){ const w=effStat(p); return `<span class="wstat ${w}"><i></i>${esc(WLABEL[w]||w)}</span>`; }
 function autoEligible(p){

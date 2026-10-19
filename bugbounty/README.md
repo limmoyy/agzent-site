@@ -103,10 +103,12 @@ into **✋ Manual**, and it gets its own entry in the progress filter. Marks are
 kept in the browser's `localStorage`, because the site is static — a click cannot
 write back to the vault by itself.
 
-To hand the marks to the agent, press **Salin daftar X**. It copies one line,
-for example `X range, priors, strise`; send that line and the agent sets
-`workStatus: "skipped"` on those entries, re-encrypts and pushes — so the mark
-becomes permanent and shows up on every device.
+To hand the marks to the agent, press **Kirim ke Telegram** — it opens
+Telegram's share sheet with the line pre-filled, so you only pick the agent chat
+and hit send. **Salin daftar X** copies the same line
+(`X range, priors, strise`) if you would rather paste it; send it and the agent
+sets `workStatus: "skipped"` on those entries, re-encrypts and pushes — so the
+mark becomes permanent and shows up on every device.
 
 Use it for a program that is **old**, or **already worked by another hunter**.
 A `skipped` entry is never executed, never auto-eligible, and never picked as the
