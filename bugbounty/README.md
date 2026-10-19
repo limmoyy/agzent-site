@@ -56,7 +56,11 @@ GitHub Pages serves the update within a minute or two.
 |---|---|
 | `id` | unique slug (e.g. `acme-vdp`). Required. |
 | `name`, `org` | display title and the owning organisation. |
-| `status` | `active` · `paused` · `archived` (controls the badge + sort order). |
+| `status` | the **program's** state: `active` · `paused` · `archived`. |
+| `workStatus` | **your** progress on it: `new` · `queued` · `in_progress` · `submitted` · `resolved` · `blocked`. Drives the progress badge + the progress filter. See the execution rules below. |
+| `auto` | `true`/`false` — may the agent run this one autonomously? Leave unset to let the viewer derive it (email channel, or a platform in `authorizedPlatforms`). |
+| `outcome` | free text once `resolved` (e.g. `Accepted — $500`, `Duplicate`, `Rejected`). |
+| `workNote`, `workUpdated` | optional: a short progress note and the date it last moved. |
 | `type` | free label, e.g. `Bug Bounty`, `VDP`, `Private invite`. |
 | `tags` | array of strings → become filter chips + search terms. |
 | `added` | date you added it to the vault (`YYYY-MM-DD`). |
@@ -65,7 +69,7 @@ GitHub Pages serves the update within a minute or two.
 | `summary` | short paragraph shown on the card and at the top of the detail. |
 | `rewards` | `{ low, medium, high, critical, notes }` — any subset; strings. |
 | **`scope`** | `{ in: [...], out: [...] }`, each row `{ asset, type, notes }`. |
-| **`submission`** | **how to submit** — `{ how, url, email, sla, language }`. |
+| **`submission`** | **how to submit** — `{ channel, how, url, email, sla, language }`. `channel` is `email` · `platform` · `web-form` · `other` and decides auto-eligibility. |
 | **`reportTemplate`** | ordered array of the fields a report must contain **for this specific program**. See the note below — this is NOT a fixed list. A plain string gets an automatic HackerOne-style hint; use `["Field","custom hint"]` to override. |
 | `policy` | disclosure rules / testing rules (plain text, line breaks kept). |
 | `safeHarbor` | one line about legal safe harbor. |
@@ -87,7 +91,46 @@ vector required"]`. If the page lists nothing special, a short default
 The viewer has search, tag-chip filters, and a sort control
 (**Newest / Oldest / Highest reward / A–Z**). Newest/Oldest use `published`
 (falling back to `added`), and reward sort reads the largest number in
-`rewards`. Fill those fields so sorting is meaningful.
+`rewards`. There is also a **progress filter** (New / Queued / In progress /
+Submitted / Resolved / Needs registration). Fill those fields so sorting and
+filtering are meaningful.
+
+---
+
+## Agent execution rules (autonomous run)
+
+`authorizedPlatforms` (top-level array) is the list of platforms the operator
+has **already given the agent an account/access to** — e.g. `["HackerOne",
+"Bugcrowd"]`. Email submission is always allowed. This is the ONLY gate for
+autonomous work.
+
+**A program is auto-eligible when** `submission.channel` is `email` (or an
+`submission.email` is set), **OR** its platform is in `authorizedPlatforms`.
+The viewer shows eligible entries as **⚡ Auto** and everything else as
+**✋ Manual**.
+
+The agent runs like this:
+
+1. **Only auto-eligible programs.** If a program is on a platform NOT in
+   `authorizedPlatforms`, do **not** touch it. Set `workStatus: "blocked"`,
+   leave a `workNote` ("needs account on <platform>"), and move on. The operator
+   registers that platform themselves, adds it to `authorizedPlatforms`, and
+   tells the agent — only then does it become eligible.
+2. **One at a time, to completion.** Work a single program fully —
+   `queued` → `in_progress` → test within scope → write the report → submit →
+   `submitted` — before starting the next. Never run two in parallel. Set
+   exactly one program to `in_progress` at any moment.
+3. **Pick order:** oldest `queued` first (or operator's choice), skipping
+   anything `blocked`/`submitted`/`resolved`.
+4. **Stay inside the rules.** Only assets in `scope.in`; obey each program's
+   `policy` (no DoS, no out-of-scope targets, no automated scanning where
+   disallowed, stop at proof-of-concept). The program's scope IS the
+   authorisation — nothing outside it.
+5. **Record every move.** Update `workStatus`, `workUpdated`, and `outcome`
+   as things change, then re-encrypt + push so the board reflects reality.
+
+After each status change: `AGZ_BB_PW='<pw>' node encrypt.mjs` → commit + push
+`programs.enc.json`.
 
 ### Where to source programs
 Pull from the public program lists on **HackerOne**, **Bugcrowd**,

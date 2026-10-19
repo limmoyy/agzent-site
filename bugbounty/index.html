@@ -108,6 +108,22 @@ h3{font-size:16px;font-weight:700;letter-spacing:-.01em}
 .status.paused{background:rgba(154,106,0,.12);color:var(--warn)} .status.paused i{background:var(--warn)}
 .status.archived{background:rgba(110,95,91,.14);color:var(--muted)} .status.archived i{background:var(--muted)}
 .reward{font:700 13px var(--mono);color:var(--lime-ink);background:var(--lime);padding:4px 10px;border-radius:99px}
+/* my-progress badge */
+.wstat{font:700 11px var(--body);letter-spacing:.03em;text-transform:uppercase;padding:4px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:5px}
+.wstat i{width:6px;height:6px;border-radius:50%}
+.wstat.new{background:rgba(110,95,91,.12);color:var(--muted)} .wstat.new i{background:var(--muted)}
+.wstat.queued{background:rgba(122,106,102,.16);color:var(--mocha)} .wstat.queued i{background:var(--mocha)}
+.wstat.in_progress{background:var(--lime);color:var(--lime-ink)} .wstat.in_progress i{background:var(--lime-ink)}
+.wstat.submitted{background:rgba(154,106,0,.14);color:var(--warn)} .wstat.submitted i{background:var(--warn)}
+.wstat.resolved{background:rgba(31,122,61,.12);color:var(--ok)} .wstat.resolved i{background:var(--ok)}
+.wstat.blocked{background:rgba(154,42,42,.12);color:var(--bad)} .wstat.blocked i{background:var(--bad)}
+.auto{font:700 11px var(--body);padding:4px 9px;border-radius:99px;display:inline-flex;gap:4px;align-items:center;border:1px solid var(--line)}
+.auto.on{background:var(--lime);color:var(--lime-ink);border-color:var(--lime)}
+.auto.off{background:var(--cream);color:var(--muted)}
+.mrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.wfilters{margin-top:12px}
+.auth{font-size:13px;color:var(--muted);margin:12px 0 0;max-width:70ch}
+.auth b{color:var(--ink)}
 .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:60px 0}
 
 /* ---------- detail ---------- */
@@ -205,6 +221,7 @@ table.scope tr:last-child td{border-bottom:0}
     <section class="hero wrap">
       <h1>Bug Bounty &amp; Disclosure Programs</h1>
       <p class="lead">A private, curated directory of vulnerability disclosure and bug-bounty programs. Each entry records where it was sourced, its scope, how to submit a report, and exactly what a report needs to contain.</p>
+      <p class="auth" id="authLine"></p>
       <div class="controls">
         <div class="search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -218,6 +235,7 @@ table.scope tr:last-child td{border-bottom:0}
           <option value="name">A–Z</option>
         </select>
       </div>
+      <div class="filters wfilters" id="wfilters"></div>
     </section>
     <section class="wrap"><div class="grid" id="grid"></div></section>
   </main>
@@ -247,8 +265,24 @@ async function decryptPayload(pw, pkg){
 }
 
 /* ---------------- state ---------------- */
-let DATA = null, activeTag = 'all';
+let DATA = null, activeTag = 'all', activeWork = 'all';
 const $ = id => document.getElementById(id);
+
+/* my-progress states (this is YOUR tracking, separate from the program's own status) */
+const WSTATES = ['new','queued','in_progress','submitted','resolved','blocked'];
+const WLABEL = {new:'New', queued:'Queued', in_progress:'In progress', submitted:'Submitted', resolved:'Resolved', blocked:'Needs registration'};
+function wstat(p){ const w=(p.workStatus||'new'); return WSTATES.includes(w)?w:'new'; }
+function wstatBadge(p){ const w=wstat(p); return `<span class="wstat ${w}"><i></i>${esc(WLABEL[w]||w)}</span>`; }
+function autoEligible(p){
+  if(p.auto===true) return true;
+  if(p.auto===false) return false;
+  const sub=p.submission||{};
+  if((sub.channel||'').toLowerCase()==='email' || sub.email) return true;
+  const auth=((DATA&&DATA.authorizedPlatforms)||[]).map(x=>String(x).toLowerCase()).filter(Boolean);
+  const plat=String((p.source&&p.source.platform)||sub.platform||'').toLowerCase();
+  return auth.some(a=>plat.includes(a));
+}
+function autoPill(p){ const on=autoEligible(p); return `<span class="auto ${on?'on':'off'}" title="${on?'Agent may auto-execute':'Register platform first, then tell the agent'}">${on?'⚡ Auto':'✋ Manual'}</span>`; }
 
 /* ---------------- gate ---------------- */
 $('gateForm').addEventListener('submit', async e => {
@@ -284,8 +318,20 @@ function boot(){
   const n = (DATA.programs||[]).length;
   $('metaInfo').innerHTML = n + ' program' + (n===1?'':'s') + (DATA.updated? ' · updated ' + DATA.updated : '');
   $('footNote').textContent = 'Agzent private directory · ' + (DATA.programs||[]).length + ' entries · data decrypted locally in your browser';
-  buildFilters(); render(); showList();
+  const auth = DATA.authorizedPlatforms || [];
+  $('authLine').innerHTML = '<b>⚡ Auto-run channels:</b> email' + (auth.length? ' + ' + auth.map(esc).join(', ') : '') +
+    '. Programs on any other platform stay <b>✋ Manual</b> — register first, then tell your agent.';
+  buildFilters(); buildWorkFilters(); render(); showList();
 }
+function buildWorkFilters(){
+  const present = new Set((DATA.programs||[]).map(wstat));
+  const states = ['all', ...WSTATES.filter(s=>present.has(s))];
+  $('wfilters').innerHTML = states.map(s=>{
+    const n = s==='all' ? (DATA.programs||[]).length : (DATA.programs||[]).filter(p=>wstat(p)===s).length;
+    return `<button class="chip${s===activeWork?' active':''}" onclick="setWork('${s}')">${s==='all'?'All progress':esc(WLABEL[s]||s)} <span style="opacity:.6">${n}</span></button>`;
+  }).join('');
+}
+function setWork(w){ activeWork=w; buildWorkFilters(); render(); }
 
 /* ---------------- filters ---------------- */
 function buildFilters(){
@@ -303,6 +349,7 @@ function render(){
   const q = ($('q').value||'').toLowerCase().trim();
   let items = (DATA.programs||[]).filter(p=>{
     if(activeTag!=='all' && !(p.tags||[]).includes(activeTag)) return false;
+    if(activeWork!=='all' && wstat(p)!==activeWork) return false;
     if(!q) return true;
     const hay = [p.name,p.org,p.summary,(p.tags||[]).join(' '),
       ...((p.scope&&p.scope.in)||[]).map(s=>s.asset)].join(' ').toLowerCase();
@@ -324,6 +371,7 @@ function render(){
       </div>
       <p class="desc">${esc(p.summary||'')}</p>
       ${p.published?`<div class="when">Released ${esc(fmtDate(p.published))}</div>`:''}
+      <div class="mrow">${wstatBadge(p)}${autoPill(p)}</div>
       <div class="foot">
         <div class="tags">${(p.tags||[]).slice(0,3).map(t=>`<span class="pill">${esc(t)}</span>`).join('')}</div>
         ${top?`<span class="reward">${esc(top)}</span>`:''}
@@ -368,6 +416,7 @@ function showDetail(id){
         Open on ${esc(src.platform||'source')} <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M7 7h10v10"/></svg></a>`:''}
     </div>
     <div class="dmeta">
+      ${wstatBadge(p)}${autoPill(p)}
       <span class="status ${esc(p.status||'active')}"><i></i>${esc(p.status||'active')}</span>
       ${src.platform?`<span class="pill">Source: ${esc(src.platform)}</span>`:''}
       ${p.type?`<span class="pill">${esc(p.type)}</span>`:''}
@@ -376,6 +425,20 @@ function showDetail(id){
       ${(p.tags||[]).map(t=>`<span class="pill">${esc(t)}</span>`).join('')}
     </div>
     ${p.summary?`<p class="summary">${esc(p.summary)}</p>`:''}
+
+    <section class="sec">
+      <h2><span class="ic">${IC.flag}</span>Progress &amp; execution</h2>
+      <dl class="kv">
+        <dt>My status</dt><dd>${esc(WLABEL[wstat(p)]||wstat(p))}</dd>
+        <dt>Auto-execute</dt><dd>${autoEligible(p)
+          ? 'Eligible — submits via email or a platform the agent is already authorised on. Agent may run this autonomously (one program at a time).'
+          : 'Manual — this channel/platform is not on your authorised list yet. Register it yourself, then tell the agent before it runs this.'}</dd>
+        ${sub.channel?`<dt>Channel</dt><dd>${esc(sub.channel)}</dd>`:''}
+        ${p.outcome?`<dt>Outcome</dt><dd>${esc(p.outcome)}</dd>`:''}
+        ${p.workNote?`<dt>Note</dt><dd>${esc(p.workNote)}</dd>`:''}
+        ${p.workUpdated?`<dt>Updated</dt><dd>${esc(fmtDate(p.workUpdated))}</dd>`:''}
+      </dl>
+    </section>
 
     ${rewardHtml?`<section class="sec">
       <h2><span class="ic">${IC.coin}</span>Rewards</h2>
@@ -446,7 +509,8 @@ const IC = {
   send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
   doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>',
   shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 5 6v5c0 4.5 3 7.8 7 9 4-1.2 7-4.5 7-9V6Z"/></svg>',
-  check2:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m5 13 4 4L19 7"/></svg>'
+  check2:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m5 13 4 4L19 7"/></svg>',
+  flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22V4m0 1h12l-2 4 2 4H4"/></svg>'
 };
 
 /* ---------------- util ---------------- */

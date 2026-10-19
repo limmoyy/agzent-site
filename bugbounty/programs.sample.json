@@ -1,5 +1,6 @@
 {
   "updated": "2026-10-19",
+  "authorizedPlatforms": ["HackerOne", "Bugcrowd"],
   "programs": [
     {
       "id": "_template",
@@ -7,6 +8,11 @@
       "org": "Organisation name",
       "status": "archived",
       "type": "Bug Bounty",
+      "workStatus": "new",
+      "auto": false,
+      "outcome": "",
+      "workNote": "",
+      "workUpdated": "",
       "published": "2024-05-01",
       "added": "2026-10-19",
       "tags": ["template"],
@@ -35,6 +41,7 @@
         ]
       },
       "submission": {
+        "channel": "platform",
         "how": "Submit a report through the platform intake form.",
         "url": "https://hackerone.com/example/reports/new",
         "email": "",
