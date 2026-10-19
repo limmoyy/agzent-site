@@ -57,7 +57,7 @@ GitHub Pages serves the update within a minute or two.
 | `id` | unique slug (e.g. `acme-vdp`). Required. |
 | `name`, `org` | display title and the owning organisation. |
 | `status` | the **program's** state: `active` · `paused` · `archived`. |
-| `workStatus` | **your** progress on it: `new` · `queued` · `in_progress` · `submitted` · `resolved` · `blocked`. Drives the progress badge + the progress filter. See the execution rules below. |
+| `workStatus` | **your** progress on it: `new` · `queued` · `in_progress` · `submitted` · `resolved` · `blocked` · `skipped`. Drives the progress badge + the progress filter. See the execution rules below. `skipped` = the **X** mark (do not execute). |
 | `auto` | `true`/`false` — may the agent run this one autonomously? Leave unset to let the viewer derive it (email channel, or a platform in `authorizedPlatforms`). |
 | `outcome` | free text once `resolved` (e.g. `Accepted — $500`, `Duplicate`, `Rejected`). |
 | `workNote`, `workUpdated` | optional: a short progress note and the date it last moved. |
@@ -92,8 +92,25 @@ The viewer has search, tag-chip filters, and a sort control
 (**Newest / Oldest / Highest reward / A–Z**). Newest/Oldest use `published`
 (falling back to `added`), and reward sort reads the largest number in
 `rewards`. There is also a **progress filter** (New / Queued / In progress /
-Submitted / Resolved / Needs registration). Fill those fields so sorting and
-filtering are meaningful.
+Submitted / Resolved / Needs registration / **X — skip**). Fill those fields so
+sorting and filtering are meaningful.
+
+### The X mark (do not execute)
+
+Every card carries an **X** button. Clicking it marks that program **X — skip**:
+the card dims, the badge becomes `X — skip`, the entry drops out of **⚡ Auto**
+into **✋ Manual**, and it gets its own entry in the progress filter. Marks are
+kept in the browser's `localStorage`, because the site is static — a click cannot
+write back to the vault by itself.
+
+To hand the marks to the agent, press **Salin daftar X**. It copies one line,
+for example `X range, priors, strise`; send that line and the agent sets
+`workStatus: "skipped"` on those entries, re-encrypts and pushes — so the mark
+becomes permanent and shows up on every device.
+
+Use it for a program that is **old**, or **already worked by another hunter**.
+A `skipped` entry is never executed, never auto-eligible, and never picked as the
+next target.
 
 ---
 
@@ -121,7 +138,9 @@ The agent runs like this:
    `submitted` — before starting the next. Never run two in parallel. Set
    exactly one program to `in_progress` at any moment.
 3. **Pick order:** oldest `queued` first (or operator's choice), skipping
-   anything `blocked`/`submitted`/`resolved`.
+   anything `blocked`/`submitted`/`resolved`/`skipped`. **`skipped` is a hard
+   stop** — the operator marked it X because it is old or already worked by
+   someone else. Do not test it, do not re-add it, do not "double-check" it.
 4. **Stay inside the rules.** Only assets in `scope.in`; obey each program's
    `policy` (no DoS, no out-of-scope targets, no automated scanning where
    disallowed, stop at proof-of-concept). The program's scope IS the
@@ -134,7 +153,11 @@ After each status change: `AGZ_BB_PW='<pw>' node encrypt.mjs` → commit + push
 
 ### Where to source programs
 Pull from the public program lists on **HackerOne**, **Bugcrowd**,
-**Intigriti**, **YesWeHack**, **Google/Microsoft/Apple VRPs**, and from a
-target's own `/.well-known/security.txt` or `/security` page. Always set
-`source.url` to the canonical policy page, and treat scope/rewards there as
-authoritative over anything cached here.
+**Intigriti**, **YesWeHack**, **Immunefi**, **HackenProof**, the audit contests
+on **Code4rena**, **CodeHawks** and **Sherlock**, the big vendor VRPs
+(**Google/Microsoft/Apple**), and from a target's own `/.well-known/security.txt`
+or `/security` page. **Web3 projects also announce new bounty programs on X /
+Twitter** — that is often where a program shows up first, before it is listed
+anywhere else, so watch project accounts and bounty-keyword chatter there too.
+Always set `source.url` to the canonical policy page, and treat scope/rewards
+there as authoritative over anything cached here.

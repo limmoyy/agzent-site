@@ -117,6 +117,17 @@ h3{font-size:16px;font-weight:700;letter-spacing:-.01em}
 .wstat.submitted{background:rgba(154,106,0,.14);color:var(--warn)} .wstat.submitted i{background:var(--warn)}
 .wstat.resolved{background:rgba(31,122,61,.12);color:var(--ok)} .wstat.resolved i{background:var(--ok)}
 .wstat.blocked{background:rgba(154,42,42,.12);color:var(--bad)} .wstat.blocked i{background:var(--bad)}
+.wstat.skipped{background:rgba(110,95,91,.10);color:var(--muted);text-decoration:line-through}
+.wstat.skipped i{background:var(--bad)}
+.card.skipped{opacity:.45}
+.card.skipped h3{text-decoration:line-through}
+.skipbtn{border:1px solid var(--line);background:transparent;color:var(--muted);min-width:26px;height:26px;padding:0 7px;border-radius:8px;cursor:pointer;font:700 12px var(--body);line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:.15s var(--ease)}
+.skipbtn:hover{border-color:var(--bad);color:var(--bad)}
+.skipbtn.on{background:var(--bad);border-color:var(--bad);color:#fff}
+.xbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+.xcopy{border:1px solid var(--line);background:var(--paper);color:var(--ink);padding:7px 14px;border-radius:99px;cursor:pointer;font:700 12px var(--body);transition:.15s var(--ease)}
+.xcopy:hover{border-color:var(--bad);color:var(--bad)}
+.xnote{font:600 12px var(--body);color:var(--muted)}
 .auto{font:700 11px var(--body);padding:4px 9px;border-radius:99px;display:inline-flex;gap:4px;align-items:center;border:1px solid var(--line)}
 .auto.on{background:var(--lime);color:var(--lime-ink);border-color:var(--lime)}
 .auto.off{background:var(--cream);color:var(--muted)}
@@ -236,6 +247,10 @@ table.scope tr:last-child td{border-bottom:0}
         </select>
       </div>
       <div class="filters wfilters" id="wfilters"></div>
+      <div class="xbar">
+        <button class="xcopy" onclick="copySkipList()">Salin daftar X</button>
+        <span class="xnote" id="xnote">Klik X di kartu buat nandain program yang jangan dieksekusi (old, atau udah dikerjain hunter lain).</span>
+      </div>
     </section>
     <section class="wrap"><div class="grid" id="grid"></div></section>
   </main>
@@ -269,11 +284,44 @@ let DATA = null, activeTag = 'all', activeWork = 'all';
 const $ = id => document.getElementById(id);
 
 /* my-progress states (this is YOUR tracking, separate from the program's own status) */
-const WSTATES = ['new','queued','in_progress','submitted','resolved','blocked'];
-const WLABEL = {new:'New', queued:'Queued', in_progress:'In progress', submitted:'Submitted', resolved:'Resolved', blocked:'Needs registration'};
+const WSTATES = ['new','queued','in_progress','submitted','resolved','blocked','skipped'];
+const WLABEL = {new:'New', queued:'Queued', in_progress:'In progress', submitted:'Submitted', resolved:'Resolved', blocked:'Needs registration', skipped:'X — skip'};
 function wstat(p){ const w=(p.workStatus||'new'); return WSTATES.includes(w)?w:'new'; }
-function wstatBadge(p){ const w=wstat(p); return `<span class="wstat ${w}"><i></i>${esc(WLABEL[w]||w)}</span>`; }
+
+/* ---- X marks: your clicks, kept in this browser, override the data ---- */
+let openId = null;
+const SKIP_KEY = 'agz_bb_skipped';
+function skipSet(){ try{ return new Set(JSON.parse(localStorage.getItem(SKIP_KEY)||'[]')); }catch(_){ return new Set(); } }
+function saveSkip(s){ try{ localStorage.setItem(SKIP_KEY, JSON.stringify([...s])); }catch(_){} }
+function isSkipped(p){ return wstat(p)==='skipped' || skipSet().has(p.id); }
+function effStat(p){ return isSkipped(p) ? 'skipped' : wstat(p); }
+function toggleSkip(id, ev){
+  if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+  const s = skipSet();
+  if(s.has(id)) s.delete(id); else s.add(id);
+  saveSkip(s);
+  buildWorkFilters(); render();
+  if(openId) showDetail(openId);
+  const note = $('xnote');
+  if(note) note.textContent = skipSet().size
+    ? skipSet().size + ' program ditandai X. Tekan "Salin daftar X" terus kirim ke agent.'
+    : 'Belum ada yang ditandai X.';
+}
+function copySkipList(){
+  const note = $('xnote');
+  const ids = (DATA.programs||[]).filter(p=>skipSet().has(p.id)).map(p=>p.id);
+  if(!ids.length){ note.textContent = 'Belum ada yang ditandai X — klik X di kartu dulu.'; return; }
+  const text = 'X ' + ids.join(', ');
+  const done = () => { note.textContent = 'Tersalin ' + ids.length + ' program — kirim baris itu ke agent.'; };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, () => { prompt('Copy manual:', text); });
+  } else {
+    prompt('Copy manual:', text);
+  }
+}
+function wstatBadge(p){ const w=effStat(p); return `<span class="wstat ${w}"><i></i>${esc(WLABEL[w]||w)}</span>`; }
 function autoEligible(p){
+  if(isSkipped(p)) return false;
   if(p.auto===true) return true;
   if(p.auto===false) return false;
   const sub=p.submission||{};
@@ -324,10 +372,10 @@ function boot(){
   buildFilters(); buildWorkFilters(); render(); showList();
 }
 function buildWorkFilters(){
-  const present = new Set((DATA.programs||[]).map(wstat));
-  const states = ['all', ...WSTATES.filter(s=>present.has(s))];
+  const present = new Set((DATA.programs||[]).map(effStat));
+  const states = ['all', ...WSTATES.filter(s=>present.has(s) || s==='skipped')];
   $('wfilters').innerHTML = states.map(s=>{
-    const n = s==='all' ? (DATA.programs||[]).length : (DATA.programs||[]).filter(p=>wstat(p)===s).length;
+    const n = s==='all' ? (DATA.programs||[]).length : (DATA.programs||[]).filter(p=>effStat(p)===s).length;
     return `<button class="chip${s===activeWork?' active':''}" onclick="setWork('${s}')">${s==='all'?'All progress':esc(WLABEL[s]||s)} <span style="opacity:.6">${n}</span></button>`;
   }).join('');
 }
@@ -349,7 +397,7 @@ function render(){
   const q = ($('q').value||'').toLowerCase().trim();
   let items = (DATA.programs||[]).filter(p=>{
     if(activeTag!=='all' && !(p.tags||[]).includes(activeTag)) return false;
-    if(activeWork!=='all' && wstat(p)!==activeWork) return false;
+    if(activeWork!=='all' && effStat(p)!==activeWork) return false;
     if(!q) return true;
     const hay = [p.name,p.org,p.summary,(p.tags||[]).join(' '),
       ...((p.scope&&p.scope.in)||[]).map(s=>s.asset)].join(' ').toLowerCase();
@@ -364,14 +412,15 @@ function render(){
   if(!items.length){ g.innerHTML='<div class="empty">No programs match. Hermes can add one by editing the data file.</div>'; return; }
   g.innerHTML = items.map(p=>{
     const top = topReward(p);
-    return `<article class="card" onclick="showDetail('${esc(p.id)}')">
+    const sk = isSkipped(p);
+    return `<article class="card${sk?' skipped':''}" onclick="showDetail('${esc(p.id)}')">
       <div class="row1">
         <div><h3>${esc(p.name)}</h3><div class="org">${esc(p.org||'')}</div></div>
         <span class="status ${esc(p.status||'active')}"><i></i>${esc(p.status||'active')}</span>
       </div>
       <p class="desc">${esc(p.summary||'')}</p>
       ${p.published?`<div class="when">Released ${esc(fmtDate(p.published))}</div>`:''}
-      <div class="mrow">${wstatBadge(p)}${autoPill(p)}</div>
+      <div class="mrow">${wstatBadge(p)}${autoPill(p)}<button class="skipbtn${isSkipped(p)?' on':''}" title="${isSkipped(p)?'Batal X — masukin lagi ke daftar':'Tandai X — jangan eksekusi program ini'}" onclick="toggleSkip('${esc(p.id)}',event)">X</button></div>
       <div class="foot">
         <div class="tags">${(p.tags||[]).slice(0,3).map(t=>`<span class="pill">${esc(t)}</span>`).join('')}</div>
         ${top?`<span class="reward">${esc(top)}</span>`:''}
@@ -387,6 +436,7 @@ function topReward(p){
 function showList(){ $('list').style.display='block'; $('detail').classList.remove('on'); window.scrollTo(0,0); }
 function showDetail(id){
   const p=(DATA.programs||[]).find(x=>x.id===id); if(!p) return;
+  openId = id;
   $('list').style.display='none'; $('detail').classList.add('on'); window.scrollTo(0,0);
   const r=p.rewards||{}, sub=p.submission||{}, src=p.source||{};
   const rwOrder=[['critical','Critical'],['high','High'],['medium','Medium'],['low','Low']];
@@ -417,6 +467,7 @@ function showDetail(id){
     </div>
     <div class="dmeta">
       ${wstatBadge(p)}${autoPill(p)}
+      <button class="skipbtn${isSkipped(p)?' on':''}" title="${isSkipped(p)?'Batal X — masukin lagi ke daftar':'Tandai X — jangan eksekusi program ini'}" onclick="toggleSkip('${esc(p.id)}',event)">${isSkipped(p)?'Batal X':'Tandai X'}</button>
       <span class="status ${esc(p.status||'active')}"><i></i>${esc(p.status||'active')}</span>
       ${src.platform?`<span class="pill">Source: ${esc(src.platform)}</span>`:''}
       ${p.type?`<span class="pill">${esc(p.type)}</span>`:''}
@@ -429,10 +480,11 @@ function showDetail(id){
     <section class="sec">
       <h2><span class="ic">${IC.flag}</span>Progress &amp; execution</h2>
       <dl class="kv">
-        <dt>My status</dt><dd>${esc(WLABEL[wstat(p)]||wstat(p))}</dd>
+        <dt>My status</dt><dd>${esc(WLABEL[effStat(p)]||effStat(p))}</dd>
         <dt>Auto-execute</dt><dd>${autoEligible(p)
           ? 'Eligible — submits via email or a platform the agent is already authorised on. Agent may run this autonomously (one program at a time).'
           : 'Manual — this channel/platform is not on your authorised list yet. Register it yourself, then tell the agent before it runs this.'}</dd>
+        ${isSkipped(p)?`<dt>Excluded</dt><dd>Ditandai X — agent tidak akan mengeksekusi program ini (old, atau sudah dikerjakan hunter lain).</dd>`:''}
         ${sub.channel?`<dt>Channel</dt><dd>${esc(sub.channel)}</dd>`:''}
         ${p.outcome?`<dt>Outcome</dt><dd>${esc(p.outcome)}</dd>`:''}
         ${p.workNote?`<dt>Note</dt><dd>${esc(p.workNote)}</dd>`:''}
