@@ -343,6 +343,33 @@ function levelRows(x, ref) {
 }
 const TIER = { arming: ['ARMING', 'If the candle closes like this, a buy limit arms'], sweeping: ['SWEEPING', 'Broke the low — needs to close back up'], near: ['NEAR LOW', 'One push from a sweep'] };
 const tfPill = tf => `<span class="pill tfp">${esc(tf)}</span>`;
+
+// ── "Analisa di Claude": opens a new claude.ai chat pre-filled with this setup (runs on the viewer's own
+// Claude account; the page itself never calls an AI). Kept compact: claude.ai's ?q= rides in the URL.
+function claudePrompt(x) {
+  const m = CL.res?.mkt, c = x.ctx, p = claudeParams(x.tf), f = x.forming, w = x.why, b = x.raw;
+  const lv = x.live.position || x.live.pending, ref = lv ? (lv.price ?? lv.ep) : f?.would?.entry ?? c.price;
+  const P = v => px(v, ref);
+  const L = [];
+  L.push(`Kamu analis trading crypto. Tolong review setup ini dari scanner gw (strategi "Flush & Reclaim" yang kamu rancang). Jawab dalam bahasa Indonesia santai, singkat, poin-poin.`);
+  L.push(`\nATURAN STRATEGI (${x.tf}): long only. Candle flush range ≥ ${p.rng_atr}×ATR14, volume ≥ ${p.vol_mult}× median 72 candle, menembus low ${sweepH(x.tf)} jam terakhir, lower wick ≥ ${Math.round(p.wick * 100)}%. Entry limit di low + ${p.ent_frac}×range (berlaku ${p.limit_bars} candle), stop = low − ${p.buf}×ATR, skip kalau stop < ${p.min_risk_bp} bp atau > ${p.max_sl} ATR. TP1 ${p.tp1_r}R (setengah posisi, lalu stop ke break-even), TP2 ${p.tp2_r}R, time stop ${p.max_hold_h} jam. Fee taker 5 bp, maker 2 bp.`);
+  L.push(`Riset: edge cuma kelihatan di flush besar (stop ≥ 1,5%); flush kecil impas setelah fee; gagal di BTC/ETH; 2022 (bear) rugi.${x.tf === '15m' ? ' Versi 15m paling lemah (t ≈ 0,7).' : ''}`);
+  L.push(`\nSETUP: ${short(x.sym)}USDT perp, timeframe ${x.tf}, waktu ${fmtWib(Date.now() / 1000)} WIB.`);
+  if (x.live.position) L.push(`Status: SUDAH MASUK long di ${P(lv.ep)}${lv.tp1Hit ? ', TP1 sudah kena, stop di break-even' : ''}. Stop ${P(lv.sl)}, TP1 ${P(lv.tp1)}, TP2 ${P(lv.tp)}.`);
+  else if (x.live.pending) L.push(`Status: BUY LIMIT aktif di ${P(lv.price)}, stop ${P(lv.sl)}, TP1 ${P(lv.tp1)}, TP2 ${P(lv.tp)}. Risk ${n2(Math.abs(lv.price - lv.sl) / lv.price * 100, 2)}%. Berlaku ${lv.barsLeft} candle lagi.`);
+  else if (f?.tier) L.push(`Status: candle ${x.tf} yang masih jalan sedang "${f.tier}" (${f.passed}/5 aturan lolos, ${Math.round(f.elapsed * f.tfMin)} dari ${f.tfMin} menit). ${f.checks.map(k => `${k.label}: ${k.now} (perlu ${k.need})${k.ok ? ' ✓' : ''}`).join('; ')}.${f.tier === 'arming' ? ` Kalau tutup begini: entry ${P(f.would.entry)}, stop ${P(f.would.sl)}, TP1 ${P(f.would.tp1)}, TP2 ${P(f.would.tp)}.` : ''}`);
+  if (w) L.push(`Candle flush: range ${n2(w.rngAtr, 2)}× ATR, volume ${n2(w.volX, 2)}× normal, lower wick ${Math.round(w.wick * 100)}%, menembus low ${P(w.sweep)}, risk ${n2(w.riskBp, 0)} bp.`);
+  L.push(`Harga sekarang ${P(c.price)}. Konteks 1h: trend ${c.trend}, RSI ${n2(c.rsi, 0)}, ATR ${n2(c.atrPct, 2)}%/jam, 24h ${pct(c.ret24)}, 7d vs BTC ${pct(c.rs)}, ${n2(c.distLo24, 1)}% di atas low 24h ${P(c.lo24)}.`);
+  if (m) L.push(`Pasar: BTC ${m.btcRegime === 'bull' ? 'di atas' : 'di bawah'} EMA ~25 hari, BTC 24h ${pct(m.btcRet24)}, 7d ${pct(m.btcRet168)}; ${Math.round(m.breadth * 100)}% dari ${m.tokens} token di atas EMA200 1h; ${m.stressed} token turun > 5% dalam 24h.`);
+  L.push(`Track record strategi ini di ${short(x.sym)} (${x.tf}): ${x.st.n ? `${x.st.n} trade, rata-rata ${sgn(x.st.avg, 0)} bp, win ${Math.round(x.st.win * 100)}%` : 'belum ada trade'}. Semua token: ${CL.res?.byTf[x.tf]?.n || 0} trade, ${sgn(CL.res?.byTf[x.tf]?.avg, 0)} bp.`);
+  const k0 = Math.max(0, b.t.length - 24), rows = [];
+  for (let i = k0; i < b.t.length; i++) rows.push(`${fmtWib(b.t[i]).split(', ')[1] || fmtWib(b.t[i])} ${P(b.o[i])} ${P(b.h[i])} ${P(b.l[i])} ${P(b.c[i])} ${vol(b.v[i])}`);
+  L.push(`\n${rows.length} candle ${x.tf} terakhir (jam WIB, O H L C volume USDT${b.forming ? ', baris terakhir masih jalan' : ''}):\n${rows.join('\n')}`);
+  L.push(`\nYANG GW MAU:\n1. Verdict: AMBIL / SKIP / AMBIL SIZE KECIL, plus alasan utamanya.\n2. Kualitas flush-nya: kapitulasi beneran, atau cuma turun pelan?\n3. Kalau bisa search web: ada berita/unlock/listing/hack soal ${short(x.sym)} di 24 jam terakhir yang bikin flush ini bukan sekadar likuidasi?\n4. Apa yang bikin setup ini batal sebelum entry kena?\n5. Level entry/stop/TP perlu diubah? Jangan ngarang angka, pakai data di atas.`);
+  return L.join('\n');
+}
+const askHref = x => 'https://claude.ai/new?q=' + encodeURIComponent(claudePrompt(x));
+const askBtn = x => `<a class="btn sm ask" href="${esc(askHref(x))}" target="_blank" rel="noopener" title="Opens a new chat on claude.ai with this setup filled in — uses your own Claude account">✦ Analisa di Claude</a>`;
 function checkRows(f) {
   return `<div class="chk">${f.checks.map(c => `<span class="ck ${c.ok ? 'ok' : ''}">${c.ok ? '✓' : '·'}</span><span>${esc(c.label)}</span><span class="mono">${esc(c.now)}</span><span class="dim mono">${esc(c.need)}</span>`).join('')}</div>`;
 }
@@ -364,7 +391,7 @@ function formingSection(r) {
       ${checkRows(f)}
       ${f.tier === 'arming' ? `<div class="dim" style="font-size:12px;margin-top:2px">If it closes now:</div>${levelRows({ price: f.would.entry, sl: f.would.sl, tp1: f.would.tp1, tp: f.would.tp }, f.would.entry)}` : ''}
       <p class="say">${esc(formingSay(x.sym, f))}</p>
-      <div class="ctrls" style="margin:0;align-items:center"><button class="btn sm pri" data-chart="${esc(x.sym)}" data-tf="${esc(x.tf)}">Chart ${esc(x.tf)}</button><span class="tag">⏱ ${cd(f)}</span></div>
+      <div class="ctrls" style="margin:0;align-items:center"><button class="btn sm pri" data-chart="${esc(x.sym)}" data-tf="${esc(x.tf)}">Chart ${esc(x.tf)}</button>${askBtn(x)}<span class="tag">⏱ ${cd(f)}</span></div>
     </div>`;
   }).join('');
   const closes = r.tfs.length > 1 ? 'a 1h or 15m candle closes' : `a ${r.tfs[0]} candle closes`;
@@ -405,7 +432,7 @@ function renderClaude() {
       ${levelRows(isPos ? { ...s, price: s.ep } : s, ref)}
       <div class="tags"><span class="tag">risk ${n2(risk, 2)}%</span><span class="tag">now ${px(x.ctx.price, ref)}</span>${until ? `<span class="tag">limit valid to ${esc(until)} WIB</span>` : `<span class="tag">since ${esc(fmtWib(x.raw.t[s.ei]))}</span>`}<span class="tag">${esc(x.tf)} record ${x.st.n ? `${x.st.n} × ${sgn(x.st.avg, 0)} bp` : 'none'}</span></div>
       <ul class="say">${x.say.map(t => `<li>${esc(t)}</li>`).join('')}${(x.scored?.notes || []).map(t => `<li class="dim">${esc(t)}</li>`).join('')}</ul>
-      <div class="ctrls" style="margin:0"><button class="btn sm pri" data-chart="${esc(x.sym)}" data-tf="${esc(x.tf)}">Chart ${esc(x.tf)} with levels</button><button class="btn sm" data-bt="${esc(x.sym)}" data-tf="${esc(x.tf)}">Backtest this token</button></div>
+      <div class="ctrls" style="margin:0"><button class="btn sm pri" data-chart="${esc(x.sym)}" data-tf="${esc(x.tf)}">Chart ${esc(x.tf)} with levels</button><button class="btn sm" data-bt="${esc(x.sym)}" data-tf="${esc(x.tf)}">Backtest this token</button>${askBtn(x)}</div>
     </div>`;
   }).join('');
   const watch = [...r.ok].sort((a, b) => (a.ctx.distLo24 ?? 99) - (b.ctx.distLo24 ?? 99));
