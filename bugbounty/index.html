@@ -412,8 +412,13 @@ async function deriveKey(pw, salt, iters) {
   const base = await crypto.subtle.importKey('raw', te.encode(pw), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iters, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
 }
+async function fetchSnapPkg() {
+  let file = 'radar.enc.json';
+  try { const m = await (await fetch('radar.manifest.json?_=' + Date.now(), { cache: 'no-store' })).json(); if (m && m.file) file = m.file; } catch (_) { }
+  return (await fetch(file + '?_=' + Date.now(), { cache: 'no-store' })).json();
+}
 async function decryptSnap(pw) {
-  const pkg = await (await fetch('radar.enc.json?_=' + Date.now(), { cache: 'no-store' })).json();
+  const pkg = await fetchSnapPkg();
   const key = await deriveKey(pw, b64d(pkg.salt), pkg.iter || 200000);
   const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(pkg.iv) }, key, b64d(pkg.ct));
   return JSON.parse(td.decode(pt));
