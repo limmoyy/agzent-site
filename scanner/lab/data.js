@@ -32,6 +32,22 @@ export async function candles(sym, tf = '1h', bars = 2000, ttl = 60e3) {
   if (hit && Date.now() - hit.at < ttl) return hit.data;
   const { contract, mult } = gateContract(sym), sec = TF_SEC[tf];
   const now = Math.floor(Date.now() / 1000), n = Math.min(bars, 9990);
+  if (hit && hit.data.t.length) {
+    // re-scan: keep the history we already have, fetch only the candles since the last one (+ the forming one)
+    const old = hit.data, need = Math.ceil((now - old.t[old.t.length - 1]) / sec) + 2;
+    if (need <= 1990) {
+      const fresh = await getJson(`${API}?contract=${contract}&interval=${tf}&limit=${need}`);
+      const k0 = old.t.length - 1, rows = new Map();
+      for (let i = 0; i <= k0; i++) rows.set(old.t[i], [old.o[i], old.h[i], old.l[i], old.c[i], old.v[i]]);
+      for (const k of fresh) rows.set(+k.t, [+k.o * mult, +k.h * mult, +k.l * mult, +k.c * mult, +k.sum || 0]);
+      const ts = [...rows.keys()].sort((a, b) => a - b).slice(-n);
+      const data = { sym, tf, t: ts, o: [], h: [], l: [], c: [], v: [] };
+      for (const t of ts) { const r = rows.get(t); data.o.push(r[0]); data.h.push(r[1]); data.l.push(r[2]); data.c.push(r[3]); data.v.push(r[4]); }
+      data.forming = ts.length > 0 && ts[ts.length - 1] + sec > now;
+      cache.set(key, { at: Date.now(), data });
+      return data;
+    }
+  }
   const chunks = [];
   if (n <= 2000) chunks.push(`${API}?contract=${contract}&interval=${tf}&limit=${n}`);
   else for (let f = now - n * sec; f < now; f += 1999 * sec) chunks.push(`${API}?contract=${contract}&interval=${tf}&from=${f}&to=${Math.min(now, f + 1999 * sec)}`);

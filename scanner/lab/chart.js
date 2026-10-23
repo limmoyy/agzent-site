@@ -79,7 +79,9 @@ export function makeChart(el, { height = 520 } = {}) {
       if (b.label) {
         const t = document.createElement('div');
         t.className = 'box-label';
-        t.style.cssText = `position:absolute;left:${x0 + 4}px;top:${Math.min(yT, yS) + 3}px`;
+        // narrow box (the open candle at the right edge): hang the label leftwards from the box's right side
+        t.style.cssText = x1 - x0 < 180 ? `position:absolute;right:${el.clientWidth - x1 + 4}px;top:${Math.min(yT, yS) + 3}px`
+          : `position:absolute;left:${x0 + 4}px;top:${Math.min(yT, yS) + 3}px`;
         t.textContent = b.label;
         overlay.appendChild(t);
       }

@@ -140,3 +140,52 @@ export function narrative(sym, st, ctx, mkt) {
   if (mkt && mkt.btcRegime === 'bear' && (st.pending || st.position)) out.push('BTC is below its ~25-day EMA: flushes can keep flushing — keep size small.');
   return out;
 }
+
+// ── Forming setups: the still-open candle measured against the rules ───────────────────────
+// A Flush & Reclaim setup can only arm when a candle closes, so between closes the useful question is
+// "which candle is on its way to becoming one?". Tiers:
+//   arming   — passes every rule right now: if it closes like this, a buy limit arms at the close
+//   sweeping — took out the 24h low but has not closed back up / range / volume not there yet
+//   near     — its low is within 1 ATR of the 24h low: a sweep is one push away
+const median = a => { const s = [...a].filter(v => v === v).sort((x, y) => x - y), m = s.length >> 1; return s.length ? (s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2) : NaN; };
+
+/** b = candles incl. the forming one (b.forming), now = unix seconds, tfSec = candle length. */
+export function formingState(b, p, now, tfSec = 3600) {
+  const n = b.c.length;
+  if (n < 220) return null;
+  const forming = !!b.forming, prev = forming ? n - 2 : n - 1;
+  const AT = atr(b, 14), A = AT[prev], lo24 = Math.min(...b.l.slice(prev - p.low_n + 1, prev + 1)), vm = median(b.v.slice(prev - 71, prev + 1));
+  const openT = forming ? b.t[n - 1] : b.t[prev] + tfSec, closesAt = openT + tfSec;
+  const base = { lo24, atr: A, closesAt, openT };
+  if (!forming || !(A > 0)) {
+    const distAtr = (b.c[prev] - lo24) / A;
+    return { ...base, tier: distAtr <= 1 ? 'near' : null, distAtr, price: b.c[prev], elapsed: 0 };
+  }
+  const i = n - 1, o = b.o[i], h = b.h[i], l = b.l[i], c = b.c[i], v = b.v[i], rng = h - l;
+  const elapsed = Math.min(1, Math.max(0, (now - b.t[i]) / tfSec));
+  const volPace = v / Math.max(elapsed, 1 / 12) / vm; // volume projected to the full candle
+  const wick = rng > 0 ? (Math.min(o, c) - l) / rng : 0;
+  const Ai = AT[i], entry = Math.min(c, l + p.ent_frac * rng), sl = l - p.buf * Ai, risk = entry - sl;
+  const would = { entry, sl, tp1: entry + p.tp1_r * risk, tp: entry + p.tp2_r * risk, riskBp: risk / entry * 1e4 };
+  const checks = [
+    { k: 'sweep', label: 'Sweeps 24h low', ok: l <= lo24, now: l <= lo24 ? `−${((lo24 - l) / lo24 * 100).toFixed(2)}%` : `${((l - lo24) / lo24 * 100).toFixed(2)}% above`, need: 'a new 24h low' },
+    { k: 'range', label: 'Range', ok: rng / A >= p.rng_atr, now: `${(rng / A).toFixed(2)}× ATR`, need: `${p.rng_atr}×` },
+    { k: 'vol', label: 'Volume pace', ok: volPace >= p.vol_mult, now: `${volPace.toFixed(2)}×`, need: `${p.vol_mult}×` },
+    { k: 'wick', label: 'Lower wick', ok: wick >= p.wick, now: `${Math.round(wick * 100)}%`, need: `${Math.round(p.wick * 100)}%` },
+    { k: 'risk', label: 'Stop distance', ok: would.riskBp >= p.min_risk_bp && risk <= p.max_sl * Ai, now: `${would.riskBp.toFixed(0)} bp`, need: `${p.min_risk_bp} bp – ${p.max_sl} ATR` },
+  ];
+  const distAtr = (l - lo24) / A;
+  const tier = checks.every(x => x.ok) ? 'arming' : checks[0].ok ? 'sweeping' : distAtr <= 1 ? 'near' : null;
+  return { ...base, tier, checks, would, distAtr, price: c, low: l, elapsed, passed: checks.filter(x => x.ok).length };
+}
+
+/** Plain-language line for a forming setup. */
+export function formingSay(sym, st) {
+  const name = sym.replace(/USDT$/, ''), d = digitsFor(st.price);
+  if (st.tier === 'arming') return `${name}: this candle swept the 24h low on heavy volume and is back up with a long lower wick. If it closes like this, Claude arms a buy limit at ${f(st.would.entry, d)} — stop ${f(st.would.sl, d)}, TP1 ${f(st.would.tp1, d)}, TP2 ${f(st.would.tp, d)}.`;
+  if (st.tier === 'sweeping') {
+    const miss = st.checks.filter(x => !x.ok).map(x => `${x.label.toLowerCase()} ${x.now} (needs ${x.need})`);
+    return `${name}: flush in progress — it broke the 24h low ${f(st.lo24, d)}. Still missing: ${miss.join(', ')}. Levels move until the candle closes.`;
+  }
+  return `${name}: low is ${st.distAtr.toFixed(2)} ATR above the 24h low ${f(st.lo24, d)}. A heavy-volume wick below it that closes back up would start a setup.`;
+}

@@ -1,7 +1,7 @@
 // /scanner app: passphrase gate + the VPS snapshot (Scanner tab), and live browser tools on Gate.io candles:
 // Scan with Claude, Chart (TradingView Lightweight Charts), Backtest, Capital sim.
 import { STRATEGIES, backtest, run, stats, simulateMoney, REASON, COSTS, TF_MIN } from './lab/engine.js';
-import { CLAUDE, claudeSignals, tokenContext, marketRead, scoreSetup, narrative, digitsFor } from './lab/claude.js';
+import { CLAUDE, claudeSignals, tokenContext, marketRead, scoreSetup, narrative, digitsFor, formingState, formingSay } from './lab/claude.js';
 import { candles, closed, pool, TF_SEC } from './lab/data.js';
 import { makeChart, makeLineChart, toChartTime } from './lab/chart.js';
 import { ema } from './lab/ind.js';
@@ -218,7 +218,10 @@ function tradeRows(list, limit = 200) {
 const tradeHead = '<thead><tr><th class="l">Entry (WIB)</th><th class="l">Token</th><th class="l">Side</th><th>Entry</th><th>Exit</th><th class="l">Exit reason</th><th>Net bp</th><th>Held</th></tr></thead>';
 
 // ── Scan with Claude ─────────────────────────────────────────────────────────────────────────
-const CL = { res: null, running: false };
+const CL = { res: null, running: false, nextAt: 0, prevLive: null };
+const BASE_TITLE = document.title;
+const nextClose = (now = Date.now() / 1000) => (Math.floor(now / 3600) + 1) * 3600; // 1h candles close on the hour (UTC = WIB hour)
+const RESCAN_DELAY = 60; // give Gate a minute to publish the closed candle
 async function analyzeToken(sym, raw, btcRaw) {
   const p = CLAUDE.params, sig = maskForming(claudeSignals(raw, p, { tfMin: 60 }), raw);
   const res = run(raw, sig, {});
@@ -227,17 +230,19 @@ async function analyzeToken(sym, raw, btcRaw) {
   ctx.price = raw.c[raw.c.length - 1];
   const trades = flatTrades(sym, raw, res.trades, '1h');
   const live = res.live, why = live.pending ? sig.why[live.pending.sigBar] : live.position ? sig.why[live.position.sigBar] : null;
-  return { sym, raw, ctx, trades, st: stats(trades), live, why };
+  const forming = formingState(raw, p, Date.now() / 1000, 3600);
+  return { sym, raw, ctx, trades, st: stats(trades), live, why, forming };
 }
-async function claudeScan() {
+async function claudeScan({ auto = false } = {}) {
   if (CL.running) return;
   CL.running = true;
-  const btn = $('#cRun'); btn.disabled = true; btn.textContent = 'Claude is scanning…';
+  const btn = $('#cRun'); btn.disabled = true; btn.textContent = auto ? 'Auto re-scan…' : 'Claude is scanning…';
+  const ttl = auto ? 0 : 30e3; // re-scans fetch only the new candles (data.js keeps the history)
   const depth = +$('#cDepth').value, syms = [...new Set(['BTCUSDT', ...SYMS()])];
   try {
     progress('#cProg', 0, syms.length);
-    const btcRaw = await candles('BTCUSDT', '1h', depth, 120e3);
-    const out = await pool(syms, 4, async sym => analyzeToken(sym, sym === 'BTCUSDT' ? btcRaw : await candles(sym, '1h', depth, 120e3), btcRaw),
+    const btcRaw = await candles('BTCUSDT', '1h', depth, ttl);
+    const out = await pool(syms, 4, async sym => analyzeToken(sym, sym === 'BTCUSDT' ? btcRaw : await candles(sym, '1h', depth, ttl), btcRaw),
       (d, t) => progress('#cProg', d, t));
     const ok = out.filter(x => x && !x.error), failed = syms.filter((s, i) => !out[i] || out[i].error);
     const ctxs = Object.fromEntries(ok.map(x => [x.sym, x.ctx]));
@@ -250,17 +255,48 @@ async function claudeScan() {
       x.say = narrative(x.sym, { ...x.live, why: x.why }, x.ctx, mkt);
     }
     CL.res = { at: Date.now(), depth, ok, failed, mkt, global, all };
+    CL.nextAt = nextClose() + RESCAN_DELAY;
     renderClaude();
     refreshMoneySources();
     const live = ok.filter(x => x.state !== 'none').length;
-    toast(`Claude scanned ${ok.length} tokens — ${live} live setup${live === 1 ? '' : 's'}`);
+    document.title = live ? `(${live}) ${BASE_TITLE}` : BASE_TITLE;
+    announceNew(ok);
+    toast(`${auto ? 'Auto re-scan' : 'Claude scanned'} ${ok.length} tokens — ${live} live setup${live === 1 ? '' : 's'}`);
   } catch (e) {
-    $('#cOut').innerHTML = `<div class="empty err">Scan failed: ${esc(e.message || e)}. Gate.io (api.gateio.ws) must be reachable from this network.</div>`;
+    CL.nextAt = Date.now() / 1000 + 120; // retry an auto re-scan in 2 minutes, not every second
+    if (auto && CL.res) toast('Auto re-scan failed — retrying in 2 min');
+    else $('#cOut').innerHTML = `<div class="empty err">Scan failed: ${esc(e.message || e)}. Gate.io (api.gateio.ws) must be reachable from this network.</div>`;
   } finally {
     CL.running = false; btn.disabled = false; btn.textContent = '✦ Scan with Claude'; progress('#cProg', 1, 1);
   }
 }
-$('#cRun').addEventListener('click', claudeScan);
+$('#cRun').addEventListener('click', () => claudeScan());
+
+// new live setups since the previous scan → optional desktop notification
+function announceNew(ok) {
+  const now = new Set(ok.filter(x => x.state === 'pending').map(x => x.sym));
+  const fresh = CL.prevLive ? [...now].filter(s => !CL.prevLive.has(s)) : [];
+  CL.prevLive = now;
+  if (!fresh.length || !prefs.cNotify || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  for (const sym of fresh.slice(0, 3)) {
+    const x = ok.find(o => o.sym === sym), p = x.live.pending;
+    try { new Notification(`✦ Claude: ${short(sym)} buy limit ${px(p.price)}`, { body: `Stop ${px(p.sl, p.price)} · TP1 ${px(p.tp1, p.price)} · TP2 ${px(p.tp, p.price)}`, tag: 'claude-' + sym }); } catch (_) { }
+  }
+}
+const countdown = s => s <= 0 ? 'now' : s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 3600)}h ${Math.floor(s % 3600 / 60)}m`;
+const minutes = s => s <= 0 ? 'now' : s < 60 ? 'under a minute' : `${Math.ceil(s / 60)} min`;
+function tick() {
+  const now = Date.now() / 1000;
+  for (const el of document.querySelectorAll('[data-until]')) {
+    const left = Math.round(+el.dataset.until - now);
+    el.textContent = el.dataset.fmt === 'min' ? minutes(left) : countdown(left);
+    el.closest('.cdwrap')?.classList.toggle('due', left <= 0);
+  }
+  if (CL.res && prefs.cAuto !== false && !CL.running && CL.nextAt && now >= CL.nextAt) claudeScan({ auto: true });
+  // the open Claude chart follows the same clock
+  if (CH.reloadAt && now >= CH.reloadAt && prefs.cAuto !== false && $('#pane-chart').classList.contains('on')) { CH.reloadAt = 0; loadChart(); }
+}
+setInterval(tick, 1000);
 
 function claudeMarketNote(m) {
   const s = [];
@@ -280,6 +316,45 @@ function levelRows(x, ref) {
     <span class="k">Entry</span><span class="p en">${px(en)}</span><span class="d">${d(en)}</span>
     ${be ? `<span class="k">Stop → BE</span><span class="p slc">${px(x.sl, en)}</span><span class="d">${d(x.sl)} · ±0R</span>` : ''}
     <span class="k">${be ? 'First stop' : 'Stop'}</span><span class="p slc">${px(sl0, en)}</span><span class="d">${d(sl0)} · −1R</span>
+  </div>`;
+}
+const TIER = { arming: ['ARMING', 'If the candle closes like this, a buy limit arms'], sweeping: ['SWEEPING', 'Broke the 24h low — needs to close back up'], near: ['NEAR LOW', 'One push from a sweep'] };
+function checkRows(f) {
+  return `<div class="chk">${f.checks.map(c => `<span class="ck ${c.ok ? 'ok' : ''}">${c.ok ? '✓' : '·'}</span><span>${esc(c.label)}</span><span class="mono">${esc(c.now)}</span><span class="dim mono">${esc(c.need)}</span>`).join('')}</div>`;
+}
+function formingSection(r) {
+  const until = CL.nextAt, closeT = until - RESCAN_DELAY;
+  const list = r.ok.filter(x => x.state === 'none' && x.forming?.tier);
+  const rank = { arming: 0, sweeping: 1, near: 2 };
+  list.sort((a, b) => rank[a.forming.tier] - rank[b.forming.tier] || (b.forming.passed || 0) - (a.forming.passed || 0) || a.forming.distAtr - b.forming.distAtr);
+  const hot = list.filter(x => x.forming.tier !== 'near'), near = list.filter(x => x.forming.tier === 'near').slice(0, 10);
+  const auto = prefs.cAuto !== false, notify = !!prefs.cNotify;
+  const cd = `<span class="cdwrap">re-scan in <b data-until="${until}" data-fmt="min">${minutes(Math.round(until - Date.now() / 1000))}</b></span>`;
+  const cards = hot.map(x => {
+    const f = x.forming, [label, hint] = TIER[f.tier];
+    return `<div class="setup forming tier-${f.tier}">
+      <div class="hd"><b>${esc(short(x.sym))}</b><span class="pill st-${f.tier}">${label}</span><span class="score" title="Rules passed on the open candle">${f.passed}/5</span></div>
+      <div class="dim" style="font-size:12px">${esc(hint)} · candle ${Math.round(f.elapsed * 60)} of 60 min</div>
+      ${checkRows(f)}
+      ${f.tier === 'arming' ? `<div class="dim" style="font-size:12px;margin-top:2px">If it closes now:</div>${levelRows({ price: f.would.entry, sl: f.would.sl, tp1: f.would.tp1, tp: f.would.tp }, f.would.entry)}` : ''}
+      <p class="say">${esc(formingSay(x.sym, f))}</p>
+      <div class="ctrls" style="margin:0;align-items:center"><button class="btn sm pri" data-chart="${esc(x.sym)}">Chart</button><span class="tag">⏱ ${cd}</span></div>
+    </div>`;
+  }).join('');
+  return `<div class="card" style="margin-top:20px">
+    <div class="formhd">
+      <div><h2 class="sec" style="margin:0">Forming setups</h2>
+        <p class="note" style="margin:4px 0 0">A setup can only arm when a 1h candle closes. These tokens' open candle is on its way — no need to keep pressing scan.</p></div>
+      <div class="cdbig cdwrap"><span class="dim">next candle close ${esc(fmtWib(closeT))} WIB · re-scan in</span><b data-until="${until}">${countdown(Math.round(until - Date.now() / 1000))}</b></div>
+    </div>
+    <div class="ctrls" style="margin:10px 0 12px">
+      <label class="fld chk"><input type="checkbox" id="cAuto" ${auto ? 'checked' : ''}><span>Auto re-scan at every candle close (while this page is open)</span></label>
+      <label class="fld chk"><input type="checkbox" id="cNotify" ${notify ? 'checked' : ''}><span>Notify me when a new setup goes live</span></label>
+    </div>
+    ${hot.length ? `<div class="grid3">${cards}</div>` : `<div class="empty" style="padding:16px">Nothing is flushing right now. ${near.length ? 'Closest to a sweep:' : 'No token is within 1 ATR of its 24h low either.'}</div>`}
+    ${near.length ? `<div class="tblwrap" style="margin-top:12px"><table class="tk sm" id="cNear"><thead><tr><th class="l">Token</th><th class="l">Status</th><th>Price</th><th>24h low</th><th>Low vs 24h low</th><th>Volume pace</th><th class="l">Re-scan in</th></tr></thead><tbody>
+      ${near.map(x => { const f = x.forming, vol = f.checks?.find(c => c.k === 'vol'); return `<tr data-sym="${esc(x.sym)}"><td class="l"><span class="sym">${esc(short(x.sym))}</span></td><td class="l"><span class="pill st-near">NEAR LOW</span></td><td>${px(f.price)}</td><td>${px(f.lo24, f.price)}</td><td>${n2(f.distAtr, 2)} ATR</td><td>${vol ? esc(vol.now) : '—'}</td><td class="l"><span class="cdwrap"><b data-until="${until}" data-fmt="min">${minutes(Math.round(until - Date.now() / 1000))}</b></span></td></tr>`; }).join('')}
+    </tbody></table></div>` : ''}
   </div>`;
 }
 function renderClaude() {
@@ -313,6 +388,7 @@ function renderClaude() {
       <p class="note">Scanned ${fmtDT(new Date(r.at).toISOString())} · ${r.depth} 1h candles per token${r.failed.length ? ` · failed: ${esc(r.failed.map(short).join(', '))}` : ''}</p></div>
     <h2 class="sec" style="margin-top:18px">Live setups</h2>
     ${live.length ? `<div class="grid3">${cards}</div>` : `<div class="empty">No flush setup is live on any token right now — Claude says <b>no trade</b>. Flushes are event-driven (≈ 1–2 per day across 30 tokens); the watchlist below shows who is closest to its 24h low.</div>`}
+    ${formingSection(r)}
     <h2 class="sec" style="margin-top:20px">Watchlist</h2>
     <div class="tblwrap"><table class="tk" id="cWatch"><thead><tr><th class="l">Token</th><th class="l">State</th><th>Price</th><th class="l">Trend 1h</th><th>RSI</th><th>ATR %/h</th><th>24h low</th><th>Above low</th><th>24h</th><th>7d vs BTC</th><th>Claude trades</th><th>Avg bp</th><th>Win</th></tr></thead><tbody>
     ${watch.map(x => `<tr data-sym="${esc(x.sym)}"><td class="l"><span class="sym">${esc(short(x.sym))}</span></td><td class="l"><span class="pill st-${x.state}">${x.state === 'none' ? 'watch' : x.state}</span></td>
@@ -327,10 +403,22 @@ function renderClaude() {
     <h2 class="sec" style="margin-top:20px">Latest Claude trades</h2>
     <div class="tblwrap"><table class="tk sm" id="cRecent">${tradeHead}<tbody>${tradeRows(recent)}</tbody></table></div>
     <p class="note">Same rules, costs and fill logic as the research. Past trades here were simulated on the candles, not traded.</p>`;
+  tick();
   CL.eq?.destroy(); CL.eq = makeLineChart($('#cEq'), { height: 240 });
   CL.eq.set(equityPoints(r.all));
   $('#cToMoney').addEventListener('click', () => { $('#mSrc').value = 'claude'; showTab('money'); });
 }
+$('#cOut').addEventListener('change', async e => {
+  if (e.target.id === 'cAuto') { prefs.cAuto = e.target.checked; savePrefs(); toast(e.target.checked ? 'Auto re-scan on — Claude re-scans a minute after each 1h close' : 'Auto re-scan off'); }
+  if (e.target.id === 'cNotify') {
+    if (e.target.checked) {
+      let perm = typeof Notification === 'undefined' ? 'unsupported' : Notification.permission;
+      if (perm === 'default') perm = await Notification.requestPermission();
+      if (perm !== 'granted') { e.target.checked = false; toast(perm === 'unsupported' ? 'This browser has no notifications here' : 'Notifications are blocked for this site'); return; }
+    }
+    prefs.cNotify = e.target.checked; savePrefs();
+  }
+});
 $('#cOut').addEventListener('click', e => {
   const c = e.target.closest('[data-chart]'); if (c) { openChart(c.dataset.chart, { overlay: 'claude', tf: '1h' }); return; }
   const b = e.target.closest('[data-bt]'); if (b) { openBacktest(b.dataset.bt, 'claude', '1h'); return; }
@@ -384,6 +472,7 @@ async function loadChart() {
     CH.chart.setBars(b, d, `<b>${esc(short(symFull))}</b> · ${esc(tf)} · ${esc(ov === 'claude' ? 'Claude' : ov === 'bot' ? 'VPS bot' : ov)}`);
     CH.chart.setEmas(b, [ema(b.c, 20), ema(b.c, 50), ema(b.c, 200)]);
     computeOverlay(ov);
+    CH.reloadAt = ov === 'claude' ? b.t[b.t.length - 1] + tfSec(tf) * (b.forming ? 1 : 2) + RESCAN_DELAY : 0;
     drawOverlay();
     if (CH.focusAt) { CH.chart.focus(CH.focusAt, null, 60); const t = CH.trades.find(x => Math.abs(x.tIn - CH.focusAt) < tfSec(tf)); if (t) selectTrade(t); CH.focusAt = null; }
     else CH.chart.showRecent(tf === '5m' ? 220 : 160);
@@ -394,7 +483,7 @@ async function loadChart() {
 function ensureChartOnly() { if (!CH.chart) CH.chart = makeChart($('#chBox'), { height: Math.max(380, Math.min(560, window.innerHeight - 260)) }); }
 function computeOverlay(ov) {
   const b = CH.data, tf = CH.tf;
-  CH.trades = []; CH.live = null; CH.ovName = ov; CH.liveWhy = null;
+  CH.trades = []; CH.live = null; CH.ovName = ov; CH.liveWhy = null; CH.forming = null;
   if (ov === 'none') return;
   if (ov === 'bot') {
     const rec = SNAP?.bot?.[CH.sym];
@@ -410,6 +499,7 @@ function computeOverlay(ov) {
   CH.trades = flatTrades(CH.sym, b, res.trades, tf);
   CH.live = res.live;
   CH.liveWhy = ov === 'claude' && res.live.pending ? sig.why[res.live.pending.sigBar] : ov === 'claude' && res.live.position ? sig.why[res.live.position.sigBar] : null;
+  CH.forming = ov === 'claude' && !res.live.pending && !res.live.position ? formingState(b, p, Date.now() / 1000, tfSec(tf)) : null;
 }
 function barTime(t) { const sec = tfSec(CH.tf); return Math.floor(t / sec) * sec; }
 function drawOverlay() {
@@ -432,6 +522,16 @@ function drawOverlay() {
     if (lv.tp === lv.tp) lines.push({ price: lv.tp, color: C.up, title: 'TP2', width: 2, style: 0 });
     if (lv.tp === lv.tp && sl0 === sl0) boxes.push({ t0, entry: en, sl: sl0, tp: lv.tp, tp1: lv.tp1 === lv.tp1 ? lv.tp1 : null,
       label: `${lv.side === 1 ? 'LONG' : 'SHORT'} · ${n2(Math.abs(lv.tp - en) / Math.abs(en - sl0), 1)}R` });
+  }
+  const fs = !lv && CH.forming;
+  if (fs) {
+    lines.push({ price: fs.lo24, color: '#8EC5FF', title: 'Sweep level · 24h low', style: 2 });
+    if (fs.tier === 'arming') {
+      const w = fs.would;
+      lines.push({ price: w.entry, color: C.lime, title: 'If it closes: entry', style: 2 }, { price: w.sl, color: C.down, title: 'If it closes: stop', style: 2 },
+        { price: w.tp1, color: C.up, title: 'TP1 ½', style: 2 }, { price: w.tp, color: C.up, title: 'TP2', style: 2 });
+      boxes.push({ t0: fs.openT, entry: w.entry, sl: w.sl, tp: w.tp, tp1: w.tp1, label: 'ARMING · if the candle closes like this' });
+    }
   }
   if (CH.sel && CH.sel.sl === CH.sel.sl && CH.sel.tp === CH.sel.tp) {
     const x = CH.sel;
@@ -482,8 +582,11 @@ function renderChartSide() {
     html = '<div class="muted">No overlay. Pick Claude, the VPS bot or a lab strategy to see entries, stops and targets.</div>';
   } else {
     const ctx = tokenContext(closed(b), null); ctx.price = last;
-    html = `<h2 class="sec">${CH.ovName === 'claude' ? '✦ Claude' : esc(CH.ovName)} · no live setup</h2>` +
-      (CH.ovName === 'claude' ? `<ul class="say">${narrative(CH.sym, {}, ctx, CL.res?.mkt).map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : '<div class="muted">No open position or pending order on the latest candle.</div>') +
+    const fs = CH.forming, until = (fs?.closesAt ?? nextClose()) + RESCAN_DELAY;
+    html = `<h2 class="sec">${CH.ovName === 'claude' ? '✦ Claude' : esc(CH.ovName)} · ${fs?.tier ? esc(TIER[fs.tier][0].toLowerCase()) : 'no live setup'}</h2>` +
+      (CH.ovName === 'claude' ? (fs?.tier ? `${fs.checks ? checkRows(fs) : ''}<p class="say" style="margin-top:8px">${esc(formingSay(CH.sym, fs))}</p>` : `<ul class="say">${narrative(CH.sym, {}, ctx, CL.res?.mkt).map(t => `<li>${esc(t)}</li>`).join('')}</ul>`)
+        + `<div class="tags" style="margin-top:8px"><span class="tag cdwrap">⏱ candle closes ${esc(fmtWib(until - RESCAN_DELAY))} WIB · reload in <b data-until="${until}" data-fmt="min">${minutes(Math.round(until - Date.now() / 1000))}</b></span></div>`
+        : '<div class="muted">No open position or pending order on the latest candle.</div>') +
       '<p class="note">Click a past trade on the right/below to draw its entry, stop and target box.</p>';
   }
   $('#chSetup').innerHTML = html;
