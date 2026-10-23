@@ -168,6 +168,7 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
 .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:2px 8px}
 .setup.forming{border-style:dashed}
 .setup.tier-arming{border-color:rgba(217,255,87,.6);border-style:solid;box-shadow:0 0 0 1px rgba(217,255,87,.15) inset}
+.tfp{font-size:10.5px;padding:3px 6px;color:var(--info);border-color:rgba(142,197,255,.35);vertical-align:middle}
 .st-arming{color:var(--lime);border-color:rgba(217,255,87,.45)} .st-sweeping{color:var(--warn)} .st-near{color:var(--info)}
 .chk{display:grid;grid-template-columns:auto 1fr auto auto;gap:3px 9px;font-size:12.5px;align-items:center}
 .chk .ck{width:18px;height:18px;border-radius:6px;display:inline-grid;place-items:center;background:var(--panel2);color:var(--dim);font-weight:800;font-size:11px}
@@ -253,15 +254,16 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
       <div>
         <div class="claude-badge">✦ CLAUDE · FLUSH &amp; RECLAIM</div>
         <h2>Scan with Claude</h2>
-        <p>Claude's own strategy, run live on every scanner token: find 1h liquidation flushes that got bought back, then place a limit in the wick with the stop under it, half off at 1R and the rest at 2.5R. Each setup comes with its track record on that token.</p>
+        <p>Claude's own strategy, run live on every scanner token: find liquidation flushes that got bought back (on 1h, 15m, or both), then place a limit in the wick with the stop under it, half off at 1R and the rest at 2.5R. Each setup comes with its track record on that token.</p>
       </div>
       <div class="ctrls" style="margin:0">
-        <label class="fld"><span>History</span><select id="cDepth"><option value="2000">83 days</option><option value="5000">208 days</option><option value="10000" selected>416 days</option></select></label>
+        <div class="fld"><span>Timeframe</span><div class="seg" id="cTfSeg" role="group" aria-label="Timeframe"><button type="button" data-v="1h" aria-pressed="true">1h</button><button type="button" data-v="15m" aria-pressed="false">15m</button><button type="button" data-v="both" aria-pressed="false">1h + 15m</button></div></div>
+        <label class="fld"><span>History</span><select id="cDepth"><option value="2000">83 days</option><option value="5000">208 days (15m: 104)</option><option value="10000" selected>416 days (15m: 104)</option></select></label>
         <button class="btn pri" id="cRun" type="button">✦ Scan with Claude</button>
       </div>
     </div>
     <div class="prog" id="cProg"><i></i></div>
-    <div id="cOut"><div class="empty">Press <b>Scan with Claude</b>. It pulls 1h candles for the scanner's tokens from Gate.io (≈ 20–60 s for the full 416 days) and everything runs in this browser.</div></div>
+    <div id="cOut"><div class="empty">Press <b>Scan with Claude</b>. It pulls candles for the scanner's tokens from Gate.io (≈ 20–60 s for the full history; 1h + 15m takes about twice as long) and everything runs in this browser.</div></div>
     <details class="more card" id="research" style="margin-top:16px">
       <summary><b>How Claude built this strategy — and how much to trust it</b></summary>
       <div class="research" id="researchBody"></div>
@@ -343,6 +345,6 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
 </div>
 <div class="toast" id="toast" role="status"></div>
 <script src="vendor/lightweight-charts.standalone.production.js"></script>
-<script type="module" src="app.js?v=20261023d"></script>
+<script type="module" src="app.js?v=20261024a"></script>
 </body>
 </html>

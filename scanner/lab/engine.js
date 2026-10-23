@@ -371,7 +371,7 @@ const withLimit = (fn, base) => (b, p, ctx) => {
 };
 
 // ── Claude's strategy ───────────────────────────────────────────────────────────────────────
-import { CLAUDE } from './claude.js';
+import { CLAUDE } from './claude.js?v=20261024a';
 
 export const STRATEGIES = {
   claude: CLAUDE,
@@ -400,8 +400,9 @@ export const STRATEGIES = {
 /** Backtest one strategy on bars. Returns {trades, orders, live, stats, sig}. */
 export function backtest(id, bars, params = {}, ctx = {}, cost = {}) {
   const S = STRATEGIES[id];
-  const p = { ...S.params, ...params };
   const c = { tfMin: 60, ...ctx };
+  const tf = Object.keys(TF_MIN).find(k => TF_MIN[k] === c.tfMin);
+  const p = { ...S.params, ...(S.byTf?.[tf] || {}), ...params };
   const sig = S.signals(bars, p, c);
   const res = run(bars, sig, cost);
   return { ...res, stats: stats(res.trades), sig, params: p };

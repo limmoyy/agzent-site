@@ -12,14 +12,22 @@
 //   second half, untouched while choosing:     356 trades, +25 bp/trade, win 56%, t = 1.9
 //   holdout BTC + ETH 2021-09 → 2025-08 (Binance): BTC +1 bp (146 trades), ETH −22 bp (149 trades)
 //   gains come from big flushes (stop ≥ 150 bp away); October 2025's crash alone is ~1/3 of the total.
+// Longer holdout (Binance USDT perps, same 30 tokens where listed, 2022-01 → 2025-08, never used to choose):
+//   all flushes 1794 trades, +1 bp (t 0.1; 2022 −27, 2023 +3, 2024 +17); stop ≥ 150 bp only: 664 trades, +24 bp (t 1.9).
+//   The same window on Binance data gives +15 bp where Gate gives +34 bp: the size of the edge depends on the feed.
+// 15m: the same rules lose (2022-01 → 2026-09, 7977 trades, −5 bp, ≈ 0 before costs) — small 15m flushes are
+//   fee food. Keeping only big ones (range ≥ 2.5 ATR, stop ≥ 150 bp, sweep of the 12h low = 48 bars):
+//   2022–23 124 trades +50 bp, 2024–26 318 trades +14 bp (t 0.7), positive in 4 of 5 years (2025 −23 bp).
 // Verdict: a hypothesis with some evidence on alts, none on BTC/ETH. Paper-trade it, size small.
 import { ema, atr, rsi, rollMedian, lowest, highest, nanArr, isn } from './ind.js';
 
 export const CLAUDE = {
   title: 'Claude · Flush & Reclaim — buy the absorbed liquidation wick',
-  src: 'claude', tf: '1h', tfs: ['1h', '4h', '15m'],
+  src: 'claude', tf: '1h', tfs: ['1h', '15m', '4h'],
   params: { rng_atr: 1.5, vol_mult: 1.5, wick: 0.55, low_n: 24, ent_frac: 0.4, buf: 0.2, max_sl: 4, min_risk_bp: 40,
     tp1_r: 1, tp1_frac: 0.5, tp2_r: 2.5, be_off: 0.0008, limit_bars: 3, max_hold_h: 24, shorts: 0 },
+  // per-timeframe overrides: on 15m only big flushes clear the fees
+  byTf: { '15m': { rng_atr: 2.5, low_n: 48, min_risk_bp: 150 } },
   help: {
     rng_atr: 'Flush candle range ≥ this × ATR(14)', vol_mult: 'Volume ≥ this × 72-bar median', wick: 'Lower wick ≥ this share of the range',
     low_n: 'Must sweep the lowest low of this many bars (0 = off)', ent_frac: 'Limit entry at wick low + this × range',
@@ -29,6 +37,10 @@ export const CLAUDE = {
   },
   signals: claudeSignals,
 };
+export const claudeParams = tf => ({ ...CLAUDE.params, ...(CLAUDE.byTf[tf] || {}) });
+const TF_HOURS = { '5m': 1 / 12, '15m': 0.25, '30m': 0.5, '1h': 1, '4h': 4 };
+/** Hours covered by the sweep window (low_n bars) on this timeframe. */
+export const sweepHours = (p, tf) => +(p.low_n * (TF_HOURS[tf] || 1)).toFixed(1);
 
 export function claudeSignals(b, p, ctx = {}) {
   const n = b.c.length, { o, h, l, c, v } = b;
@@ -120,10 +132,12 @@ export function scoreSetup(setup, why, ctx, track, global, mkt) {
 const f = (v, d) => v == null || isn(v) ? '—' : Number(v).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
 export const digitsFor = p => p >= 1000 ? 1 : p >= 100 ? 2 : p >= 1 ? 4 : p >= 0.01 ? 5 : 7;
 
-/** Plain-language read Claude gives for one token. */
-export function narrative(sym, st, ctx, mkt) {
+/** Plain-language read Claude gives for one token. opt.tf = the setup's timeframe; opt.lo / opt.loH / opt.atr =
+ *  that timeframe's sweep level, its window in hours and ATR (defaults: the 1h context's 24h low). */
+export function narrative(sym, st, ctx, mkt, opt = {}) {
   const d = digitsFor(ctx.price), out = [];
-  const name = sym.replace(/USDT$/, '');
+  const name = sym.replace(/USDT$/, ''), tf = opt.tf || '1h', p = claudeParams(tf);
+  const lo = opt.lo ?? ctx.lo24, loH = opt.loH ?? 24, a = opt.atr ?? ctx.atr;
   if (st.position) {
     const x = st.position, pnl = (ctx.price / x.ep - 1) * 100 * x.side;
     out.push(`${name}: in a Flush & Reclaim long from ${f(x.ep, d)} (${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}% now).`);
@@ -131,11 +145,11 @@ export function narrative(sym, st, ctx, mkt) {
       : `Stop ${f(x.sl, d)} under the flush wick, TP1 ${f(x.tp1, d)} (half), TP2 ${f(x.tp, d)}.`);
   } else if (st.pending) {
     const x = st.pending, w = st.why;
-    out.push(`${name}: a 1h candle swept the ${f(w?.sweep, d)} low (range ${f(w?.rngAtr, 1)}× ATR, volume ${f(w?.volX, 1)}× normal) and closed with ${Math.round((w?.wick || 0) * 100)}% lower wick — sellers got absorbed.`);
+    out.push(`${name}: a ${tf} candle swept the ${loH}h low ${f(w?.sweep, d)} (range ${f(w?.rngAtr, 1)}× ATR, volume ${f(w?.volX, 1)}× normal) and closed with ${Math.round((w?.wick || 0) * 100)}% lower wick — sellers got absorbed.`);
     out.push(`Plan: buy limit ${f(x.price, d)} (live ${x.barsLeft} more bar${x.barsLeft > 1 ? 's' : ''}), stop ${f(x.sl, d)}, TP1 ${f(x.tp1, d)} for half, TP2 ${f(x.tp, d)}. Risk ${f(Math.abs(x.price - x.sl) / x.price * 100, 2)}%.`);
   } else {
-    out.push(`${name}: no flush setup now. Trend ${ctx.trend}, RSI ${f(ctx.rsi, 0)}, ${f(ctx.distLo24, 1)}% above the 24h low ${f(ctx.lo24, d)}.`);
-    out.push(`Watch: a 1h candle that wicks below ${f(ctx.lo24, d)} by ≥ ${f(1.5 * ctx.atr / ctx.price * 100, 1)}% range on heavy volume and closes in its upper half arms a setup.`);
+    out.push(`${name}: no ${tf} flush setup now. Trend ${ctx.trend}, RSI ${f(ctx.rsi, 0)}, ${f(pctDist(ctx.price, lo), 1)}% above the ${loH}h low ${f(lo, d)}.`);
+    out.push(`Watch: a ${tf} candle that wicks below ${f(lo, d)} with a ≥ ${f(p.rng_atr * a / ctx.price * 100, 1)}% range on heavy volume and closes in its upper half arms a setup${p.min_risk_bp >= 100 ? ` (only if the stop ends up ≥ ${f(p.min_risk_bp / 100, 1)}% away)` : ''}.`);
   }
   if (mkt && mkt.btcRegime === 'bear' && (st.pending || st.position)) out.push('BTC is below its ~25-day EMA: flushes can keep flushing — keep size small.');
   return out;
@@ -149,16 +163,17 @@ export function narrative(sym, st, ctx, mkt) {
 //   near     — its low is within 1 ATR of the 24h low: a sweep is one push away
 const median = a => { const s = [...a].filter(v => v === v).sort((x, y) => x - y), m = s.length >> 1; return s.length ? (s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2) : NaN; };
 
-/** b = candles incl. the forming one (b.forming), now = unix seconds, tfSec = candle length. */
+/** b = candles incl. the forming one (b.forming), now = unix seconds, tfSec = candle length.
+ *  lo = the sweep level (lowest low of the previous low_n candles), loH = that window in hours. */
 export function formingState(b, p, now, tfSec = 3600) {
   const n = b.c.length;
   if (n < 220) return null;
   const forming = !!b.forming, prev = forming ? n - 2 : n - 1;
-  const AT = atr(b, 14), A = AT[prev], lo24 = Math.min(...b.l.slice(prev - p.low_n + 1, prev + 1)), vm = median(b.v.slice(prev - 71, prev + 1));
-  const openT = forming ? b.t[n - 1] : b.t[prev] + tfSec, closesAt = openT + tfSec;
-  const base = { lo24, atr: A, closesAt, openT };
+  const AT = atr(b, 14), A = AT[prev], lo = Math.min(...b.l.slice(prev - p.low_n + 1, prev + 1)), vm = median(b.v.slice(prev - 71, prev + 1));
+  const openT = forming ? b.t[n - 1] : b.t[prev] + tfSec, closesAt = openT + tfSec, loH = +(p.low_n * tfSec / 3600).toFixed(1);
+  const base = { lo, loH, atr: A, closesAt, openT, tfMin: tfSec / 60 };
   if (!forming || !(A > 0)) {
-    const distAtr = (b.c[prev] - lo24) / A;
+    const distAtr = (b.c[prev] - lo) / A;
     return { ...base, tier: distAtr <= 1 ? 'near' : null, distAtr, price: b.c[prev], elapsed: 0 };
   }
   const i = n - 1, o = b.o[i], h = b.h[i], l = b.l[i], c = b.c[i], v = b.v[i], rng = h - l;
@@ -168,13 +183,13 @@ export function formingState(b, p, now, tfSec = 3600) {
   const Ai = AT[i], entry = Math.min(c, l + p.ent_frac * rng), sl = l - p.buf * Ai, risk = entry - sl;
   const would = { entry, sl, tp1: entry + p.tp1_r * risk, tp: entry + p.tp2_r * risk, riskBp: risk / entry * 1e4 };
   const checks = [
-    { k: 'sweep', label: 'Sweeps 24h low', ok: l <= lo24, now: l <= lo24 ? `−${((lo24 - l) / lo24 * 100).toFixed(2)}%` : `${((l - lo24) / lo24 * 100).toFixed(2)}% above`, need: 'a new 24h low' },
+    { k: 'sweep', label: `Sweeps ${loH}h low`, ok: l <= lo, now: l <= lo ? `−${((lo - l) / lo * 100).toFixed(2)}%` : `${((l - lo) / lo * 100).toFixed(2)}% above`, need: `a new ${loH}h low` },
     { k: 'range', label: 'Range', ok: rng / A >= p.rng_atr, now: `${(rng / A).toFixed(2)}× ATR`, need: `${p.rng_atr}×` },
     { k: 'vol', label: 'Volume pace', ok: volPace >= p.vol_mult, now: `${volPace.toFixed(2)}×`, need: `${p.vol_mult}×` },
     { k: 'wick', label: 'Lower wick', ok: wick >= p.wick, now: `${Math.round(wick * 100)}%`, need: `${Math.round(p.wick * 100)}%` },
     { k: 'risk', label: 'Stop distance', ok: would.riskBp >= p.min_risk_bp && risk <= p.max_sl * Ai, now: `${would.riskBp.toFixed(0)} bp`, need: `${p.min_risk_bp} bp – ${p.max_sl} ATR` },
   ];
-  const distAtr = (l - lo24) / A;
+  const distAtr = (l - lo) / A;
   const tier = checks.every(x => x.ok) ? 'arming' : checks[0].ok ? 'sweeping' : distAtr <= 1 ? 'near' : null;
   return { ...base, tier, checks, would, distAtr, price: c, low: l, elapsed, passed: checks.filter(x => x.ok).length };
 }
@@ -182,10 +197,10 @@ export function formingState(b, p, now, tfSec = 3600) {
 /** Plain-language line for a forming setup. */
 export function formingSay(sym, st) {
   const name = sym.replace(/USDT$/, ''), d = digitsFor(st.price);
-  if (st.tier === 'arming') return `${name}: this candle swept the 24h low on heavy volume and is back up with a long lower wick. If it closes like this, Claude arms a buy limit at ${f(st.would.entry, d)} — stop ${f(st.would.sl, d)}, TP1 ${f(st.would.tp1, d)}, TP2 ${f(st.would.tp, d)}.`;
+  if (st.tier === 'arming') return `${name}: this candle swept the ${st.loH}h low on heavy volume and is back up with a long lower wick. If it closes like this, Claude arms a buy limit at ${f(st.would.entry, d)} — stop ${f(st.would.sl, d)}, TP1 ${f(st.would.tp1, d)}, TP2 ${f(st.would.tp, d)}.`;
   if (st.tier === 'sweeping') {
     const miss = st.checks.filter(x => !x.ok).map(x => `${x.label.toLowerCase()} ${x.now} (needs ${x.need})`);
-    return `${name}: flush in progress — it broke the 24h low ${f(st.lo24, d)}. Still missing: ${miss.join(', ')}. Levels move until the candle closes.`;
+    return `${name}: flush in progress — it broke the ${st.loH}h low ${f(st.lo, d)}. Still missing: ${miss.join(', ')}. Levels move until the candle closes.`;
   }
-  return `${name}: low is ${st.distAtr.toFixed(2)} ATR above the 24h low ${f(st.lo24, d)}. A heavy-volume wick below it that closes back up would start a setup.`;
+  return `${name}: low is ${st.distAtr.toFixed(2)} ATR above the ${st.loH}h low ${f(st.lo, d)}. A heavy-volume wick below it that closes back up would start a setup.`;
 }

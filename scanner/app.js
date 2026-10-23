@@ -1,7 +1,7 @@
 // /scanner app: passphrase gate + the VPS snapshot (Scanner tab), and live browser tools on Gate.io candles:
 // Scan with Claude, Chart (TradingView Lightweight Charts), Backtest, Capital sim.
-import { STRATEGIES, backtest, run, stats, simulateMoney, REASON, COSTS, TF_MIN } from './lab/engine.js';
-import { CLAUDE, claudeSignals, tokenContext, marketRead, scoreSetup, narrative, digitsFor, formingState, formingSay } from './lab/claude.js';
+import { STRATEGIES, backtest, run, stats, simulateMoney, REASON, COSTS, TF_MIN } from './lab/engine.js?v=20261024a';
+import { CLAUDE, claudeParams, sweepHours, claudeSignals, tokenContext, marketRead, scoreSetup, narrative, digitsFor, formingState, formingSay } from './lab/claude.js?v=20261024a';
 import { candles, closed, pool, TF_SEC } from './lab/data.js';
 import { makeChart, makeLineChart, toChartTime } from './lab/chart.js';
 import { ema } from './lab/ind.js';
@@ -177,6 +177,9 @@ $('#stateSeg').addEventListener('click', e => { const b = e.target.closest('butt
 
 // ── helpers shared by the live tabs ──────────────────────────────────────────────────────────
 const tfSec = tf => TF_SEC[tf] || 3600;
+/** Default parameters of a strategy on a timeframe (Claude has its own 15m preset). */
+const stratParams = (id, tf) => id === 'claude' ? claudeParams(tf) : STRATEGIES[id].params;
+const sweepH = tf => sweepHours(claudeParams(tf), tf);
 /** Engine trades → flat records with times (for tables, equity and the capital sim). */
 function flatTrades(sym, b, trades, tf) {
   const sec = tfSec(tf);
@@ -208,79 +211,99 @@ function statTiles(st, extra = []) {
   return '<div class="stats">' + t.map(([k, v, c]) => `<div class="stat ${c}"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('') + '</div>';
 }
 const reasonTxt = r => REASON[r] || r;
-function tradeRows(list, limit = 200) {
+const held = s => s < 7200 ? `${Math.round(s / 60)}m` : `${Math.round(s / 3600)}h`;
+function tradeRows(list, limit = 200, showTf = false) {
   const sorted = [...list].sort((a, b) => b.tIn - a.tIn).slice(0, limit);
   return sorted.map((x, i) => `<tr data-i="${i}" data-sym="${esc(x.sym)}" data-t="${x.tIn}" data-tf="${esc(x.tf || '')}">
-    <td class="l">${fmtWib(x.tIn)}</td><td class="l"><span class="sym">${esc(short(x.sym))}</span></td><td class="l side-${x.side}">${x.side === 1 ? 'long' : 'short'}</td>
+    <td class="l">${fmtWib(x.tIn)}</td><td class="l"><span class="sym">${esc(short(x.sym))}</span>${showTf && x.tf ? ` <span class="dim mono">${esc(x.tf)}</span>` : ''}</td><td class="l side-${x.side}">${x.side === 1 ? 'long' : 'short'}</td>
     <td>${px(x.ep)}</td><td>${px(x.xp, x.ep)}</td><td class="l">${esc(x.open ? 'open' : reasonTxt(x.reason))}${x.tp1Hit ? ' <span class="dim">(TP1 ✓)</span>' : ''}</td>
-    <td class="${cls(x.bp)}">${sgn(x.bp, 0)}</td><td class="dim">${Math.round((x.tOut - x.tIn) / 3600)}h</td></tr>`).join('');
+    <td class="${cls(x.bp)}">${sgn(x.bp, 0)}</td><td class="dim">${held(x.tOut - x.tIn)}</td></tr>`).join('');
 }
 const tradeHead = '<thead><tr><th class="l">Entry (WIB)</th><th class="l">Token</th><th class="l">Side</th><th>Entry</th><th>Exit</th><th class="l">Exit reason</th><th>Net bp</th><th>Held</th></tr></thead>';
 
 // ── Scan with Claude ─────────────────────────────────────────────────────────────────────────
 const CL = { res: null, running: false, nextAt: 0, prevLive: null };
 const BASE_TITLE = document.title;
-const nextClose = (now = Date.now() / 1000) => (Math.floor(now / 3600) + 1) * 3600; // 1h candles close on the hour (UTC = WIB hour)
+// candles close on multiples of their length (UTC; WIB is a whole hour ahead, so the same minute)
+const nextClose = (sec = 3600, now = Date.now() / 1000) => (Math.floor(now / sec) + 1) * sec;
 const RESCAN_DELAY = 60; // give Gate a minute to publish the closed candle
-async function analyzeToken(sym, raw, btcRaw) {
-  const p = CLAUDE.params, sig = maskForming(claudeSignals(raw, p, { tfMin: 60 }), raw);
+// timeframe choice: 1h, 15m, or both side by side (each runs its own rules: claudeParams(tf))
+const CL_MODES = { '1h': ['1h'], '15m': ['15m'], both: ['1h', '15m'] };
+const clMode = () => CL_MODES[prefs.cTf] ? prefs.cTf : '1h';
+const tfLabel = mode => mode === 'both' ? '1h + 15m' : mode;
+// History select counts 1h candles; 15m gets 4× as many, capped at what Gate serves (≈ 104 days)
+const barsFor = (tf, depth) => tf === '1h' ? depth : Math.min(9990, Math.round(depth * 3600 / tfSec(tf)));
+/** One timeframe of one token: signals, simulated trades, live order/position and the forming candle. */
+function analyzeTf(sym, raw, tf, ctx) {
+  const p = claudeParams(tf), sig = maskForming(claudeSignals(raw, p, { tfMin: TF_MIN[tf] }), raw);
   const res = run(raw, sig, {});
-  const b = closed(raw), btc = closed(btcRaw);
-  const ctx = tokenContext(b, btc);
-  ctx.price = raw.c[raw.c.length - 1];
-  const trades = flatTrades(sym, raw, res.trades, '1h');
+  const trades = flatTrades(sym, raw, res.trades, tf);
   const live = res.live, why = live.pending ? sig.why[live.pending.sigBar] : live.position ? sig.why[live.position.sigBar] : null;
-  const forming = formingState(raw, p, Date.now() / 1000, 3600);
-  return { sym, raw, ctx, trades, st: stats(trades), live, why, forming };
+  const forming = formingState(raw, p, Date.now() / 1000, tfSec(tf));
+  return { sym, tf, raw, ctx, trades, st: stats(trades), live, why, forming, state: live.position ? 'position' : live.pending ? 'pending' : 'none' };
+}
+/** Token context always comes from 1h candles (trend, RSI, 24h low, BTC regime); setups from each chosen timeframe. */
+async function analyzeToken(sym, h1, btcH1, tfs, depth, ttl) {
+  const ctx = tokenContext(closed(h1), closed(btcH1));
+  ctx.price = h1.c[h1.c.length - 1];
+  const by = {};
+  for (const tf of tfs) by[tf] = analyzeTf(sym, tf === '1h' ? h1 : await candles(sym, tf, barsFor(tf, depth), ttl), tf, ctx);
+  if (by['15m']) ctx.price = by['15m'].raw.c[by['15m'].raw.c.length - 1];
+  return { sym, ctx, by };
 }
 async function claudeScan({ auto = false } = {}) {
-  if (CL.running) return;
+  if (CL.running) { if (!auto) CL.again = true; return; } // e.g. the timeframe changed mid-scan: run once more after
   CL.running = true;
   const btn = $('#cRun'); btn.disabled = true; btn.textContent = auto ? 'Auto re-scan…' : 'Claude is scanning…';
   const ttl = auto ? 0 : 30e3; // re-scans fetch only the new candles (data.js keeps the history)
+  const mode = clMode(), tfs = CL_MODES[mode];
   const depth = +$('#cDepth').value, syms = [...new Set(['BTCUSDT', ...SYMS()])];
+  const h1Depth = tfs.includes('1h') ? depth : 1000; // 15m only: 1h is just the context (needs ~700 candles)
   try {
     progress('#cProg', 0, syms.length);
-    const btcRaw = await candles('BTCUSDT', '1h', depth, ttl);
-    const out = await pool(syms, 4, async sym => analyzeToken(sym, sym === 'BTCUSDT' ? btcRaw : await candles(sym, '1h', depth, ttl), btcRaw),
+    const btcH1 = await candles('BTCUSDT', '1h', h1Depth, ttl);
+    const out = await pool(syms, 4, async sym => analyzeToken(sym, sym === 'BTCUSDT' ? btcH1 : await candles(sym, '1h', h1Depth, ttl), btcH1, tfs, depth, ttl),
       (d, t) => progress('#cProg', d, t));
     const ok = out.filter(x => x && !x.error), failed = syms.filter((s, i) => !out[i] || out[i].error);
     const ctxs = Object.fromEntries(ok.map(x => [x.sym, x.ctx]));
-    const mkt = marketRead(closed(btcRaw), ctxs);
-    const all = ok.flatMap(x => x.trades), global = stats(all);
-    for (const x of ok) {
-      const setup = x.live.position || x.live.pending;
-      x.state = x.live.position ? 'position' : x.live.pending ? 'pending' : 'none';
-      x.scored = setup ? scoreSetup(x.live.pending, x.why, x.ctx, x.st, global, mkt) : null;
-      x.say = narrative(x.sym, { ...x.live, why: x.why }, x.ctx, mkt);
+    const mkt = marketRead(closed(btcH1), ctxs);
+    const rows = ok.flatMap(x => tfs.map(tf => x.by[tf]));
+    const all = rows.flatMap(r => r.trades), global = stats(all);
+    const byTf = Object.fromEntries(tfs.map(tf => [tf, stats(all.filter(t => t.tf === tf))]));
+    for (const r of rows) {
+      const f = r.forming;
+      r.scored = r.state !== 'none' ? scoreSetup(r.live.pending, r.why, r.ctx, r.st, byTf[r.tf], mkt) : null;
+      r.say = narrative(r.sym, { ...r.live, why: r.why }, r.ctx, mkt, { tf: r.tf, lo: f?.lo, loH: f?.loH, atr: f?.atr });
     }
-    CL.res = { at: Date.now(), depth, ok, failed, mkt, global, all };
-    CL.nextAt = nextClose() + RESCAN_DELAY;
+    CL.res = { at: Date.now(), depth, mode, tfs, ok, rows, failed, mkt, global, byTf, all };
+    CL.nextAt = nextClose(Math.min(...tfs.map(tfSec))) + RESCAN_DELAY;
     renderClaude();
     refreshMoneySources();
-    const live = ok.filter(x => x.state !== 'none').length;
+    const live = rows.filter(x => x.state !== 'none').length;
     document.title = live ? `(${live}) ${BASE_TITLE}` : BASE_TITLE;
-    announceNew(ok);
-    toast(`${auto ? 'Auto re-scan' : 'Claude scanned'} ${ok.length} tokens — ${live} live setup${live === 1 ? '' : 's'}`);
+    announceNew(rows);
+    toast(`${auto ? 'Auto re-scan' : 'Claude scanned'} ${ok.length} tokens on ${tfLabel(mode)} — ${live} live setup${live === 1 ? '' : 's'}`);
   } catch (e) {
     CL.nextAt = Date.now() / 1000 + 120; // retry an auto re-scan in 2 minutes, not every second
     if (auto && CL.res) toast('Auto re-scan failed — retrying in 2 min');
     else $('#cOut').innerHTML = `<div class="empty err">Scan failed: ${esc(e.message || e)}. Gate.io (api.gateio.ws) must be reachable from this network.</div>`;
   } finally {
     CL.running = false; btn.disabled = false; btn.textContent = '✦ Scan with Claude'; progress('#cProg', 1, 1);
+    if (CL.again) { CL.again = false; claudeScan(); }
   }
 }
 $('#cRun').addEventListener('click', () => claudeScan());
 
 // new live setups since the previous scan → optional desktop notification
-function announceNew(ok) {
-  const now = new Set(ok.filter(x => x.state === 'pending').map(x => x.sym));
+function announceNew(rows) {
+  const key = x => `${x.sym}|${x.tf}`;
+  const now = new Set(rows.filter(x => x.state === 'pending').map(key));
   const fresh = CL.prevLive ? [...now].filter(s => !CL.prevLive.has(s)) : [];
   CL.prevLive = now;
   if (!fresh.length || !prefs.cNotify || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-  for (const sym of fresh.slice(0, 3)) {
-    const x = ok.find(o => o.sym === sym), p = x.live.pending;
-    try { new Notification(`✦ Claude: ${short(sym)} buy limit ${px(p.price)}`, { body: `Stop ${px(p.sl, p.price)} · TP1 ${px(p.tp1, p.price)} · TP2 ${px(p.tp, p.price)}`, tag: 'claude-' + sym }); } catch (_) { }
+  for (const k of fresh.slice(0, 3)) {
+    const x = rows.find(o => key(o) === k), p = x.live.pending;
+    try { new Notification(`✦ Claude ${x.tf}: ${short(x.sym)} buy limit ${px(p.price)}`, { body: `Stop ${px(p.sl, p.price)} · TP1 ${px(p.tp1, p.price)} · TP2 ${px(p.tp, p.price)}`, tag: 'claude-' + k }); } catch (_) { }
   }
 }
 const countdown = s => s <= 0 ? 'now' : s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 3600)}h ${Math.floor(s % 3600 / 60)}m`;
@@ -318,98 +341,115 @@ function levelRows(x, ref) {
     <span class="k">${be ? 'First stop' : 'Stop'}</span><span class="p slc">${px(sl0, en)}</span><span class="d">${d(sl0)} · −1R</span>
   </div>`;
 }
-const TIER = { arming: ['ARMING', 'If the candle closes like this, a buy limit arms'], sweeping: ['SWEEPING', 'Broke the 24h low — needs to close back up'], near: ['NEAR LOW', 'One push from a sweep'] };
+const TIER = { arming: ['ARMING', 'If the candle closes like this, a buy limit arms'], sweeping: ['SWEEPING', 'Broke the low — needs to close back up'], near: ['NEAR LOW', 'One push from a sweep'] };
+const tfPill = tf => `<span class="pill tfp">${esc(tf)}</span>`;
 function checkRows(f) {
   return `<div class="chk">${f.checks.map(c => `<span class="ck ${c.ok ? 'ok' : ''}">${c.ok ? '✓' : '·'}</span><span>${esc(c.label)}</span><span class="mono">${esc(c.now)}</span><span class="dim mono">${esc(c.need)}</span>`).join('')}</div>`;
 }
 function formingSection(r) {
-  const until = CL.nextAt, closeT = until - RESCAN_DELAY;
-  const list = r.ok.filter(x => x.state === 'none' && x.forming?.tier);
+  const until = CL.nextAt, closeT = until - RESCAN_DELAY, many = r.tfs.length > 1;
+  const list = r.rows.filter(x => x.state === 'none' && x.forming?.tier);
   const rank = { arming: 0, sweeping: 1, near: 2 };
   list.sort((a, b) => rank[a.forming.tier] - rank[b.forming.tier] || (b.forming.passed || 0) - (a.forming.passed || 0) || a.forming.distAtr - b.forming.distAtr);
-  const hot = list.filter(x => x.forming.tier !== 'near'), near = list.filter(x => x.forming.tier === 'near').slice(0, 10);
+  const hot = list.filter(x => x.forming.tier !== 'near'), near = list.filter(x => x.forming.tier === 'near').slice(0, 12);
   const auto = prefs.cAuto !== false, notify = !!prefs.cNotify;
-  const cd = `<span class="cdwrap">re-scan in <b data-until="${until}" data-fmt="min">${minutes(Math.round(until - Date.now() / 1000))}</b></span>`;
+  // each token is decided by the re-scan right after ITS candle closes (15m: every quarter hour, 1h: on the hour)
+  const decide = f => f.closesAt + RESCAN_DELAY;
+  const cd = f => `<span class="cdwrap">re-scan in <b data-until="${decide(f)}" data-fmt="min">${minutes(Math.round(decide(f) - Date.now() / 1000))}</b></span>`;
   const cards = hot.map(x => {
     const f = x.forming, [label, hint] = TIER[f.tier];
     return `<div class="setup forming tier-${f.tier}">
-      <div class="hd"><b>${esc(short(x.sym))}</b><span class="pill st-${f.tier}">${label}</span><span class="score" title="Rules passed on the open candle">${f.passed}/5</span></div>
-      <div class="dim" style="font-size:12px">${esc(hint)} · candle ${Math.round(f.elapsed * 60)} of 60 min</div>
+      <div class="hd"><b>${esc(short(x.sym))} ${tfPill(x.tf)}</b><span class="pill st-${f.tier}">${label}</span><span class="score" title="Rules passed on the open candle">${f.passed}/5</span></div>
+      <div class="dim" style="font-size:12px">${esc(hint)} · ${esc(x.tf)} candle ${Math.round(f.elapsed * f.tfMin)} of ${f.tfMin} min</div>
       ${checkRows(f)}
       ${f.tier === 'arming' ? `<div class="dim" style="font-size:12px;margin-top:2px">If it closes now:</div>${levelRows({ price: f.would.entry, sl: f.would.sl, tp1: f.would.tp1, tp: f.would.tp }, f.would.entry)}` : ''}
       <p class="say">${esc(formingSay(x.sym, f))}</p>
-      <div class="ctrls" style="margin:0;align-items:center"><button class="btn sm pri" data-chart="${esc(x.sym)}">Chart</button><span class="tag">⏱ ${cd}</span></div>
+      <div class="ctrls" style="margin:0;align-items:center"><button class="btn sm pri" data-chart="${esc(x.sym)}" data-tf="${esc(x.tf)}">Chart ${esc(x.tf)}</button><span class="tag">⏱ ${cd(f)}</span></div>
     </div>`;
   }).join('');
+  const closes = r.tfs.length > 1 ? 'a 1h or 15m candle closes' : `a ${r.tfs[0]} candle closes`;
   return `<div class="card" style="margin-top:20px">
     <div class="formhd">
       <div><h2 class="sec" style="margin:0">Forming setups</h2>
-        <p class="note" style="margin:4px 0 0">A setup can only arm when a 1h candle closes. These tokens' open candle is on its way — no need to keep pressing scan.</p></div>
-      <div class="cdbig cdwrap"><span class="dim">next candle close ${esc(fmtWib(closeT))} WIB · re-scan in</span><b data-until="${until}">${countdown(Math.round(until - Date.now() / 1000))}</b></div>
+        <p class="note" style="margin:4px 0 0">A setup can only arm when ${closes}. These tokens' open candle is on its way — no need to keep pressing scan.</p></div>
+      <div class="cdbig cdwrap"><span class="dim">next ${esc(r.tfs.includes('15m') ? '15m' : '1h')} close ${esc(fmtWib(closeT))} WIB · re-scan in</span><b data-until="${until}">${countdown(Math.round(until - Date.now() / 1000))}</b></div>
     </div>
     <div class="ctrls" style="margin:10px 0 12px">
       <label class="fld chk"><input type="checkbox" id="cAuto" ${auto ? 'checked' : ''}><span>Auto re-scan at every candle close (while this page is open)</span></label>
       <label class="fld chk"><input type="checkbox" id="cNotify" ${notify ? 'checked' : ''}><span>Notify me when a new setup goes live</span></label>
     </div>
-    ${hot.length ? `<div class="grid3">${cards}</div>` : `<div class="empty" style="padding:16px">Nothing is flushing right now. ${near.length ? 'Closest to a sweep:' : 'No token is within 1 ATR of its 24h low either.'}</div>`}
-    ${near.length ? `<div class="tblwrap" style="margin-top:12px"><table class="tk sm" id="cNear"><thead><tr><th class="l">Token</th><th class="l">Status</th><th>Price</th><th>24h low</th><th>Low vs 24h low</th><th>Volume pace</th><th class="l">Re-scan in</th></tr></thead><tbody>
-      ${near.map(x => { const f = x.forming, vol = f.checks?.find(c => c.k === 'vol'); return `<tr data-sym="${esc(x.sym)}"><td class="l"><span class="sym">${esc(short(x.sym))}</span></td><td class="l"><span class="pill st-near">NEAR LOW</span></td><td>${px(f.price)}</td><td>${px(f.lo24, f.price)}</td><td>${n2(f.distAtr, 2)} ATR</td><td>${vol ? esc(vol.now) : '—'}</td><td class="l"><span class="cdwrap"><b data-until="${until}" data-fmt="min">${minutes(Math.round(until - Date.now() / 1000))}</b></span></td></tr>`; }).join('')}
+    ${hot.length ? `<div class="grid3">${cards}</div>` : `<div class="empty" style="padding:16px">Nothing is flushing right now. ${near.length ? 'Closest to a sweep:' : 'No token is within 1 ATR of its sweep level either.'}</div>`}
+    ${near.length ? `<div class="tblwrap" style="margin-top:12px"><table class="tk sm" id="cNear"><thead><tr><th class="l">Token</th>${many ? '<th class="l">TF</th>' : ''}<th class="l">Status</th><th>Price</th><th>Sweep level</th><th>Low vs level</th><th>Volume pace</th><th class="l">Re-scan in</th></tr></thead><tbody>
+      ${near.map(x => { const f = x.forming, vol = f.checks?.find(c => c.k === 'vol'); return `<tr data-sym="${esc(x.sym)}" data-tf="${esc(x.tf)}"><td class="l"><span class="sym">${esc(short(x.sym))}</span></td>${many ? `<td class="l">${tfPill(x.tf)}</td>` : ''}<td class="l"><span class="pill st-near">NEAR LOW</span></td><td>${px(f.price)}</td><td>${px(f.lo, f.price)} <span class="dim">${f.loH}h</span></td><td>${n2(f.distAtr, 2)} ATR</td><td>${vol ? esc(vol.now) : '—'}</td><td class="l"><span class="cdwrap"><b data-until="${decide(f)}" data-fmt="min">${minutes(Math.round(decide(f) - Date.now() / 1000))}</b></span></td></tr>`; }).join('')}
     </tbody></table></div>` : ''}
   </div>`;
 }
 function renderClaude() {
   const r = CL.res; if (!r) return;
-  const m = r.mkt, live = r.ok.filter(x => x.state !== 'none').sort((a, b) => (b.state === 'position') - (a.state === 'position') || (b.scored?.score || 0) - (a.scored?.score || 0));
+  const many = r.tfs.length > 1;
+  const m = r.mkt, live = r.rows.filter(x => x.state !== 'none').sort((a, b) => (b.state === 'position') - (a.state === 'position') || (b.scored?.score || 0) - (a.scored?.score || 0));
   const g = r.global;
   const mk = [
     ['BTC regime', m.btcRegime === 'bull' ? 'Bull' : 'Bear', m.btcRegime === 'bull' ? 'good' : 'badv'],
     ['Breadth > EMA200', Math.round(m.breadth * 100) + '%', ''], ['BTC 24h', pct(m.btcRet24), m.btcRet24 >= 0 ? 'good' : 'badv'],
     ['Live setups', live.length, live.length ? 'warnv' : ''], ['Tokens scanned', r.ok.length, ''],
-    ['Strategy record', `${sgn(g.avg, 0)} bp × ${g.n}`, g.avg >= 0 ? 'good' : 'badv'],
+    ...r.tfs.map(tf => { const s = r.byTf[tf]; return [`Record ${tf}`, s.n ? `${sgn(s.avg, 0)} bp × ${s.n}` : 'no trades', s.n ? (s.avg >= 0 ? 'good' : 'badv') : '']; }),
   ];
   const cards = live.map(x => {
     const s = x.live.position || x.live.pending, isPos = x.state === 'position';
     const ref = s.price ?? s.ep, risk = Math.abs(ref - (s.sl0 ?? s.sl)) / ref * 100;
     const score = x.scored?.score ?? 0;
-    const until = x.live.pending ? fmtWib(x.raw.t[x.live.pending.sigBar] + (CLAUDE.params.limit_bars + 1) * 3600) : '';
+    const until = x.live.pending ? fmtWib(x.raw.t[x.live.pending.sigBar] + (claudeParams(x.tf).limit_bars + 1) * tfSec(x.tf)) : '';
     return `<div class="setup ${isPos ? 'position' : ''}">
-      <div class="hd"><b>${esc(short(x.sym))}</b><span class="pill ${isPos ? 'st-position' : 'st-pending'}">${isPos ? 'IN TRADE · LONG' : 'BUY LIMIT'}</span><span class="score ${score >= 65 ? 'hi' : ''}" title="Ranking aid, not a probability">${score}</span></div>
+      <div class="hd"><b>${esc(short(x.sym))} ${tfPill(x.tf)}</b><span class="pill ${isPos ? 'st-position' : 'st-pending'}">${isPos ? 'IN TRADE · LONG' : 'BUY LIMIT'}</span><span class="score ${score >= 65 ? 'hi' : ''}" title="Ranking aid, not a probability">${score}</span></div>
       ${levelRows(isPos ? { ...s, price: s.ep } : s, ref)}
-      <div class="tags"><span class="tag">risk ${n2(risk, 2)}%</span><span class="tag">now ${px(x.ctx.price, ref)}</span>${until ? `<span class="tag">limit valid to ${esc(until)} WIB</span>` : `<span class="tag">since ${esc(fmtWib(x.raw.t[s.ei]))}</span>`}<span class="tag">token record ${x.st.n ? `${x.st.n} × ${sgn(x.st.avg, 0)} bp` : 'none'}</span></div>
+      <div class="tags"><span class="tag">risk ${n2(risk, 2)}%</span><span class="tag">now ${px(x.ctx.price, ref)}</span>${until ? `<span class="tag">limit valid to ${esc(until)} WIB</span>` : `<span class="tag">since ${esc(fmtWib(x.raw.t[s.ei]))}</span>`}<span class="tag">${esc(x.tf)} record ${x.st.n ? `${x.st.n} × ${sgn(x.st.avg, 0)} bp` : 'none'}</span></div>
       <ul class="say">${x.say.map(t => `<li>${esc(t)}</li>`).join('')}${(x.scored?.notes || []).map(t => `<li class="dim">${esc(t)}</li>`).join('')}</ul>
-      <div class="ctrls" style="margin:0"><button class="btn sm pri" data-chart="${esc(x.sym)}">Chart with levels</button><button class="btn sm" data-bt="${esc(x.sym)}">Backtest this token</button></div>
+      <div class="ctrls" style="margin:0"><button class="btn sm pri" data-chart="${esc(x.sym)}" data-tf="${esc(x.tf)}">Chart ${esc(x.tf)} with levels</button><button class="btn sm" data-bt="${esc(x.sym)}" data-tf="${esc(x.tf)}">Backtest this token</button></div>
     </div>`;
   }).join('');
   const watch = [...r.ok].sort((a, b) => (a.ctx.distLo24 ?? 99) - (b.ctx.distLo24 ?? 99));
   const recent = [...r.all].sort((a, b) => b.tIn - a.tIn).slice(0, 25);
+  // per token, one line per timeframe when both run
+  const perTf = (x, fn) => r.tfs.map(tf => fn(x.by[tf], tf)).join('<br>');
+  const rec = (s, fn) => s.st.n ? fn(s.st) : '—';
+  const freq = { '1h': '≈ 1–2 per day', '15m': '≈ 2–3 per week', both: '≈ 1–2 per day on 1h, 2–3 per week on 15m' }[r.mode];
+  const candlesNote = r.tfs.map(tf => `${barsFor(tf, r.depth)} ${tf}`).join(' + ');
   $('#cOut').innerHTML = `
     <div class="card"><h2 class="sec">Claude's market read</h2><div class="stats" style="margin-bottom:10px">${mk.map(([k, v, c]) => `<div class="stat ${c}"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('')}</div>
       <ul class="say">${claudeMarketNote(m).map(t => `<li>${esc(t)}</li>`).join('')}</ul>
-      <p class="note">Scanned ${fmtDT(new Date(r.at).toISOString())} · ${r.depth} 1h candles per token${r.failed.length ? ` · failed: ${esc(r.failed.map(short).join(', '))}` : ''}</p></div>
+      <p class="note">Scanned ${fmtDT(new Date(r.at).toISOString())} on ${esc(tfLabel(r.mode))} · ${candlesNote} candles per token${r.failed.length ? ` · failed: ${esc(r.failed.map(short).join(', '))}` : ''}</p></div>
+    ${r.tfs.includes('15m') ? `<div class="warn-banner" style="margin:14px 0 0">15m runs a stricter version: only <b>big</b> flushes (range ≥ 2.5 ATR, stop ≥ 1.5% away, sweeping the 12h low). The 1h rules copied to 15m lost money over 2022–2026 — small 15m flushes don't cover the fees. Even this version is unproven (t ≈ 0.7 out-of-sample). Details under “How Claude built this strategy”.</div>` : ''}
     <h2 class="sec" style="margin-top:18px">Live setups</h2>
-    ${live.length ? `<div class="grid3">${cards}</div>` : `<div class="empty">No flush setup is live on any token right now — Claude says <b>no trade</b>. Flushes are event-driven (≈ 1–2 per day across 30 tokens); the watchlist below shows who is closest to its 24h low.</div>`}
+    ${live.length ? `<div class="grid3">${cards}</div>` : `<div class="empty">No flush setup is live on any token right now — Claude says <b>no trade</b>. Flushes are event-driven (${freq} across 30 tokens); the forming list below shows who is closest.</div>`}
     ${formingSection(r)}
     <h2 class="sec" style="margin-top:20px">Watchlist</h2>
     <div class="tblwrap"><table class="tk" id="cWatch"><thead><tr><th class="l">Token</th><th class="l">State</th><th>Price</th><th class="l">Trend 1h</th><th>RSI</th><th>ATR %/h</th><th>24h low</th><th>Above low</th><th>24h</th><th>7d vs BTC</th><th>Claude trades</th><th>Avg bp</th><th>Win</th></tr></thead><tbody>
-    ${watch.map(x => `<tr data-sym="${esc(x.sym)}"><td class="l"><span class="sym">${esc(short(x.sym))}</span></td><td class="l"><span class="pill st-${x.state}">${x.state === 'none' ? 'watch' : x.state}</span></td>
+    ${watch.map(x => `<tr data-sym="${esc(x.sym)}"><td class="l"><span class="sym">${esc(short(x.sym))}</span></td>
+      <td class="l">${perTf(x, (s, tf) => `<span class="pill st-${s.state}">${many ? tf + ' · ' : ''}${s.state === 'none' ? 'watch' : s.state}</span>`)}</td>
       <td>${px(x.ctx.price)}</td><td class="l ${x.ctx.trend === 'up' ? 'pos' : x.ctx.trend === 'down' ? 'neg' : 'dim'}">${x.ctx.trend}</td><td>${n2(x.ctx.rsi, 0)}</td><td>${n2(x.ctx.atrPct, 2)}</td>
       <td>${px(x.ctx.lo24, x.ctx.price)}</td><td>${n2(x.ctx.distLo24, 1)}%</td><td class="${cls(x.ctx.ret24)}">${pct(x.ctx.ret24)}</td><td class="${cls(x.ctx.rs)}">${pct(x.ctx.rs)}</td>
-      <td>${x.st.n || 0}</td><td class="${cls(x.st.avg)}">${x.st.n ? sgn(x.st.avg, 0) : '—'}</td><td>${x.st.n ? Math.round(x.st.win * 100) + '%' : '—'}</td></tr>`).join('')}
+      <td>${perTf(x, (s, tf) => `${many ? `<span class="dim">${tf}</span> ` : ''}${s.st.n || 0}`)}</td>
+      <td>${perTf(x, s => `<span class="${cls(s.st.avg)}">${rec(s, st => sgn(st.avg, 0))}</span>`)}</td>
+      <td>${perTf(x, s => rec(s, st => Math.round(st.win * 100) + '%'))}</td></tr>`).join('')}
     </tbody></table></div>
-    <h2 class="sec" style="margin-top:20px">Track record on this history (all tokens pooled)</h2>
+    <h2 class="sec" style="margin-top:20px">Track record on this history (all tokens pooled${many ? ', 1h + 15m together' : ''})</h2>
     ${statTiles(g)}
+    ${many ? `<div class="tblwrap" style="margin:10px 0 0"><table class="tk sm" style="min-width:0"><thead><tr><th class="l">Timeframe</th><th>Trades</th><th>Win</th><th>Avg bp</th><th>Total bp</th><th>t</th><th>Days</th></tr></thead><tbody>
+      ${r.tfs.map(tf => { const s = r.byTf[tf], d = barsFor(tf, r.depth) * tfSec(tf) / 86400; return `<tr><td class="l">${tfPill(tf)}</td><td>${s.n || 0}</td><td>${s.n ? Math.round(s.win * 100) + '%' : '—'}</td><td class="${cls(s.avg)}">${s.n ? sgn(s.avg, 1) : '—'}</td><td class="${cls(s.sum)}">${s.n ? sgn(s.sum, 0) : '—'}</td><td>${s.n ? n2(s.t, 2) : '—'}</td><td>${n2(d, 0)}</td></tr>`; }).join('')}
+      </tbody></table></div>` : ''}
     <div class="chartbox" id="cEq"></div>
     <div class="ctrls" style="margin:12px 0 0"><button class="btn pri" id="cToMoney" type="button">Simulate capital with these ${g.n || 0} trades →</button></div>
     <h2 class="sec" style="margin-top:20px">Latest Claude trades</h2>
-    <div class="tblwrap"><table class="tk sm" id="cRecent">${tradeHead}<tbody>${tradeRows(recent)}</tbody></table></div>
-    <p class="note">Same rules, costs and fill logic as the research. Past trades here were simulated on the candles, not traded.</p>`;
+    <div class="tblwrap"><table class="tk sm" id="cRecent">${tradeHead}<tbody>${tradeRows(recent, 200, many)}</tbody></table></div>
+    <p class="note">Same rules, costs and fill logic as the research. Past trades here were simulated on the candles, not traded.${r.tfs.includes('15m') ? ' 15m history is capped at ≈ 104 days (Gate serves the latest 10 000 candles).' : ''}</p>`;
   tick();
   CL.eq?.destroy(); CL.eq = makeLineChart($('#cEq'), { height: 240 });
   CL.eq.set(equityPoints(r.all));
   $('#cToMoney').addEventListener('click', () => { $('#mSrc').value = 'claude'; showTab('money'); });
 }
 $('#cOut').addEventListener('change', async e => {
-  if (e.target.id === 'cAuto') { prefs.cAuto = e.target.checked; savePrefs(); toast(e.target.checked ? 'Auto re-scan on — Claude re-scans a minute after each 1h close' : 'Auto re-scan off'); }
+  if (e.target.id === 'cAuto') { prefs.cAuto = e.target.checked; savePrefs(); toast(e.target.checked ? `Auto re-scan on — Claude re-scans a minute after each ${CL.res?.tfs.includes('15m') ? '15m' : '1h'} close` : 'Auto re-scan off'); }
   if (e.target.id === 'cNotify') {
     if (e.target.checked) {
       let perm = typeof Notification === 'undefined' ? 'unsupported' : Notification.permission;
@@ -420,11 +460,20 @@ $('#cOut').addEventListener('change', async e => {
   }
 });
 $('#cOut').addEventListener('click', e => {
-  const c = e.target.closest('[data-chart]'); if (c) { openChart(c.dataset.chart, { overlay: 'claude', tf: '1h' }); return; }
-  const b = e.target.closest('[data-bt]'); if (b) { openBacktest(b.dataset.bt, 'claude', '1h'); return; }
+  const first = CL.res?.tfs[0] || '1h';
+  const c = e.target.closest('[data-chart]'); if (c) { openChart(c.dataset.chart, { overlay: 'claude', tf: c.dataset.tf || first }); return; }
+  const b = e.target.closest('[data-bt]'); if (b) { openBacktest(b.dataset.bt, 'claude', b.dataset.tf || first); return; }
   const tr = e.target.closest('tr[data-sym]');
-  if (tr) openChart(tr.dataset.sym, { overlay: 'claude', tf: '1h', at: tr.dataset.t ? +tr.dataset.t : null });
+  if (tr) openChart(tr.dataset.sym, { overlay: 'claude', tf: tr.dataset.tf || first, at: tr.dataset.t ? +tr.dataset.t : null });
 });
+// timeframe switch: remembered, and re-scans right away when a scan is already on screen
+$('#cTfSeg').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-v]'); if (!btn) return;
+  prefs.cTf = btn.dataset.v; savePrefs(); syncTfSeg(); CL.prevLive = null;
+  if (CL.res) claudeScan();
+});
+function syncTfSeg() { $$('#cTfSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === clMode()))); }
+syncTfSeg();
 
 // ── Chart ────────────────────────────────────────────────────────────────────────────────────
 const CH = { chart: null, data: null, trades: [], live: null, sel: null };
@@ -492,8 +541,9 @@ function computeOverlay(ov) {
     return;
   }
   const S = STRATEGIES[ov]; if (!S) return;
-  const params = ov === $('#btStrat').value ? readParams() : {};
-  const p = { ...S.params, ...params };
+  // the Backtest tab's edited parameters apply when it shows the same strategy and timeframe
+  const params = ov === $('#btStrat').value && (ov !== 'claude' || $('#btTf').value === tf) ? readParams() : {};
+  const p = { ...stratParams(ov, tf), ...params };
   const sig = maskForming(S.signals(b, p, { tfMin: TF_MIN[tf] || 60 }), b);
   const res = run(b, sig, {});
   CH.trades = flatTrades(CH.sym, b, res.trades, tf);
@@ -525,7 +575,7 @@ function drawOverlay() {
   }
   const fs = !lv && CH.forming;
   if (fs) {
-    lines.push({ price: fs.lo24, color: '#8EC5FF', title: 'Sweep level · 24h low', style: 2 });
+    lines.push({ price: fs.lo, color: '#8EC5FF', title: `Sweep level · ${fs.loH}h low`, style: 2 });
     if (fs.tier === 'arming') {
       const w = fs.would;
       lines.push({ price: w.entry, color: C.lime, title: 'If it closes: entry', style: 2 }, { price: w.sl, color: C.down, title: 'If it closes: stop', style: 2 },
@@ -576,15 +626,15 @@ function renderChartSide() {
     html = `<h2 class="sec">${CH.ovName === 'claude' ? '✦ Claude' : esc(CH.ovName)} · ${isPos ? 'in trade' : (lv.kind === 'market' ? 'enter at next open' : lv.kind === 'stop' ? 'stop entry' : 'buy limit')}</h2>
       ${levelRows({ ...lv, price: en, tp1: lv.tp1 === lv.tp1 ? lv.tp1 : NaN }, en)}
       <div class="tags" style="margin-top:8px"><span class="tag">price now ${px(last, en)}</span><span class="tag">${lv.side === 1 ? 'long' : 'short'}</span>${isPos ? `<span class="tag">${sgn((last / en - 1) * 100 * lv.side, 2)}% open P&L</span>` : `<span class="tag">valid ${lv.barsLeft} more bar${lv.barsLeft > 1 ? 's' : ''}</span>`}</div>
-      ${CH.ovName === 'claude' ? `<ul class="say" style="margin-top:8px">${narrative(CH.sym, { ...CH.live, why: CH.liveWhy }, { ...tokenContext(closed(b), null), price: last }, CL.res?.mkt).map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
+      ${CH.ovName === 'claude' ? `<ul class="say" style="margin-top:8px">${narrative(CH.sym, { ...CH.live, why: CH.liveWhy }, { ...tokenContext(closed(b), null), price: last }, CL.res?.mkt, { tf: CH.tf, loH: sweepH(CH.tf) }).map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
       ${lv.tp === lv.tp ? sizeCalc(en, lv.sl0 ?? lv.sl, lv.tp1, lv.tp, lv.side) : ''}`;
   } else if (CH.ovName === 'none') {
     html = '<div class="muted">No overlay. Pick Claude, the VPS bot or a lab strategy to see entries, stops and targets.</div>';
   } else {
     const ctx = tokenContext(closed(b), null); ctx.price = last;
-    const fs = CH.forming, until = (fs?.closesAt ?? nextClose()) + RESCAN_DELAY;
-    html = `<h2 class="sec">${CH.ovName === 'claude' ? '✦ Claude' : esc(CH.ovName)} · ${fs?.tier ? esc(TIER[fs.tier][0].toLowerCase()) : 'no live setup'}</h2>` +
-      (CH.ovName === 'claude' ? (fs?.tier ? `${fs.checks ? checkRows(fs) : ''}<p class="say" style="margin-top:8px">${esc(formingSay(CH.sym, fs))}</p>` : `<ul class="say">${narrative(CH.sym, {}, ctx, CL.res?.mkt).map(t => `<li>${esc(t)}</li>`).join('')}</ul>`)
+    const fs = CH.forming, until = (fs?.closesAt ?? nextClose(tfSec(CH.tf))) + RESCAN_DELAY;
+    html = `<h2 class="sec">${CH.ovName === 'claude' ? `✦ Claude ${esc(CH.tf)}` : esc(CH.ovName)} · ${fs?.tier ? esc(TIER[fs.tier][0].toLowerCase()) : 'no live setup'}</h2>` +
+      (CH.ovName === 'claude' ? (fs?.tier ? `${fs.checks ? checkRows(fs) : ''}<p class="say" style="margin-top:8px">${esc(formingSay(CH.sym, fs))}</p>` : `<ul class="say">${narrative(CH.sym, {}, ctx, CL.res?.mkt, { tf: CH.tf, lo: fs?.lo, loH: fs?.loH, atr: fs?.atr }).map(t => `<li>${esc(t)}</li>`).join('')}</ul>`)
         + `<div class="tags" style="margin-top:8px"><span class="tag cdwrap">⏱ candle closes ${esc(fmtWib(until - RESCAN_DELAY))} WIB · reload in <b data-until="${until}" data-fmt="min">${minutes(Math.round(until - Date.now() / 1000))}</b></span></div>`
         : '<div class="muted">No open position or pending order on the latest candle.</div>') +
       '<p class="note">Click a past trade on the right/below to draw its entry, stop and target box.</p>';
@@ -610,14 +660,21 @@ $('#chCustom').addEventListener('keydown', e => { if (e.key === 'Enter') loadCha
 // ── Backtest ─────────────────────────────────────────────────────────────────────────────────
 const BT = { last: null };
 const CHOICES = { stop: ['mid', 'far'], days: ['weekdays', 'tue_wed_fri'], target: ['vwap', 'band'] };
+// saved edits are per strategy; Claude keeps one set per timeframe because its 15m defaults differ
+const paramKey = (id, tf) => id === 'claude' && tf !== '1h' ? `claude@${tf}` : id;
 function onStratChange() {
   const id = $('#btStrat').value, S = STRATEGIES[id];
   const cur = $('#btTf').value;
   $('#btTf').innerHTML = S.tfs.map(t => `<option ${t === S.tf ? 'selected' : ''}>${t}</option>`).join('');
   if (S.tfs.includes(cur)) $('#btTf').value = cur;
-  $('#btStratNote').textContent = `${S.title}${S.src === 'lab' ? ' — ported from scalping-lab (trade-for-trade identical to the Python engine on the same candles).' : ' — researched on 1h candles.'}`;
-  const saved = (prefs.params || {})[id] || {};
-  $('#btParams').innerHTML = Object.entries(S.params).map(([k, v]) => {
+  renderParams();
+}
+function renderParams() {
+  const id = $('#btStrat').value, S = STRATEGIES[id], tf = $('#btTf').value;
+  $('#btStratNote').textContent = `${S.title}${S.src === 'lab' ? ' — ported from scalping-lab (trade-for-trade identical to the Python engine on the same candles).'
+    : tf === '15m' ? ' — 15m preset: big flushes only (range ≥ 2.5 ATR, stop ≥ 150 bp, sweep of the 12h low).' : ' — researched on 1h candles.'}`;
+  const saved = (prefs.params || {})[paramKey(id, tf)] || {};
+  $('#btParams').innerHTML = Object.entries(stratParams(id, tf)).map(([k, v]) => {
     const val = saved[k] ?? v, help = S.help?.[k] || '';
     if (typeof v === 'string') return `<label class="fld sm" title="${esc(help)}"><span>${esc(k)}</span><select data-p="${esc(k)}">${(CHOICES[k] || [v]).map(o => `<option ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
     return `<label class="fld sm" title="${esc(help)}"><span>${esc(k)}</span><input type="number" data-p="${esc(k)}" value="${esc(val)}" step="any"></label>`;
@@ -629,16 +686,18 @@ function readParams() {
   return p;
 }
 $('#btStrat').addEventListener('change', onStratChange);
-$('#btParams').addEventListener('change', () => { const id = $('#btStrat').value; prefs.params = { ...(prefs.params || {}), [id]: readParams() }; savePrefs(); });
-$('#btReset').addEventListener('click', () => { const id = $('#btStrat').value; if (prefs.params) delete prefs.params[id]; savePrefs(); onStratChange(); $('#btFeeT').value = 5; $('#btFeeM').value = 2; $('#btSlip').value = 1; });
+$('#btTf').addEventListener('change', () => { if ($('#btStrat').value === 'claude') renderParams(); });
+$('#btParams').addEventListener('change', () => { const key = paramKey($('#btStrat').value, $('#btTf').value); prefs.params = { ...(prefs.params || {}), [key]: readParams() }; savePrefs(); });
+$('#btReset').addEventListener('click', () => { const key = paramKey($('#btStrat').value, $('#btTf').value); if (prefs.params) delete prefs.params[key]; savePrefs(); onStratChange(); $('#btFeeT').value = 5; $('#btFeeM').value = 2; $('#btSlip').value = 1; });
 const costs = () => ({ fee_t: +$('#btFeeT').value / 1e4, fee_m: +$('#btFeeM').value / 1e4, slip: +$('#btSlip').value / 1e4 });
 function openBacktest(sym, strat, tf) {
-  $('#btSym').value = sym; $('#btStrat').value = strat; onStratChange(); if (tf) $('#btTf').value = tf;
+  $('#btSym').value = sym; $('#btStrat').value = strat; onStratChange();
+  if (tf) { $('#btTf').value = tf; renderParams(); }
   showTab('backtest'); runBacktest();
 }
 async function runOne(sym, id, tf, depth, params, cost) {
   const b = await candles(sym, tf, depth, 120e3), S = STRATEGIES[id];
-  const p = { ...S.params, ...params };
+  const p = { ...stratParams(id, tf), ...params };
   const sig = maskForming(S.signals(b, p, { tfMin: TF_MIN[tf] || 60 }), b);
   const res = run(b, sig, cost);
   return { sym, b, trades: flatTrades(sym, b, res.trades, tf), live: res.live };
@@ -709,7 +768,7 @@ $('#btCompare').addEventListener('click', async () => {
 });
 $('#btOut').addEventListener('click', e => {
   const u = e.target.closest('[data-use]'); if (!u) return;
-  $('#btStrat').value = u.dataset.use; onStratChange(); $('#btTf').value = u.dataset.tf; runBacktest();
+  $('#btStrat').value = u.dataset.use; onStratChange(); $('#btTf').value = u.dataset.tf; renderParams(); runBacktest();
 });
 
 // ── Capital sim ──────────────────────────────────────────────────────────────────────────────
@@ -781,8 +840,22 @@ $('#researchBody').innerHTML = `
     <tr><td>Holdout ETH 2021-09 → 2025-08 (Binance)</td><td>149</td><td class="neg">−22</td><td>44%</td><td>−1.9</td></tr>
     <tr><td>Mirrored short (squeeze fade), 2nd half</td><td>127</td><td class="neg">−135</td><td>46%</td><td>−3.1</td></tr>
   </tbody></table>
-  <p><b>What failed on the way</b> (so you don't have to retry them): trend pullbacks to EMA 20 (−10 bp both halves), regime-filtered impulse follow (≈ 0), short squeezes even with a BTC bear filter (−135 bp out-of-sample).</p>
-  <p><b>Honest verdict.</b> Positive on alts in both halves, but the BTC/ETH holdout fails, October 2025's crash supplies about a third of the profit, and small flushes (stop under 150 bp) barely cover costs. Capital sim on the whole year with 1% risk per trade and 3 slots: +33% with a −26% drawdown; with 30% margin × 50x the account blows up. Treat it as a paper-trading hypothesis. The engine, rules and numbers are all in <span class="mono">scanner/lab/</span>.</p>`;
+  <p><b>Longer check (added later).</b> Binance perps for the same 30 tokens (where listed), Jan 2022 → Aug 2025 — years never used to pick the rules. All flushes together barely break even; the big ones (stop ≥ 150 bp) hold up. The same Sep 2025 → Sep 2026 window is +15 bp on Binance candles vs +34 bp on Gate's, so the size of the edge depends on the data feed.</p>
+  <table><thead><tr><th>1h, Binance, 2022-01 → 2025-08</th><th>Trades</th><th>Avg bp</th><th>t</th></tr></thead><tbody>
+    <tr><td>All flushes (the default rules)</td><td>1794</td><td>+1</td><td>0.1</td></tr>
+    <tr><td>· by year: 2022 / 2023 / 2024</td><td colspan="3">−27 / +3 / +17 bp</td></tr>
+    <tr><td>Big flushes only (stop ≥ 150 bp)</td><td>664</td><td class="pos">+24</td><td>1.9</td></tr>
+  </tbody></table>
+  <p><b>15m.</b> The 1h rules copied to 15m lose: 7977 trades from 2022 to Sep 2026, −5 bp per trade, ≈ 0 before costs — small 15m flushes are fee food. Of about 100 variants tried, only the big-flush corner stayed positive in both halves, the same thing the 1h data says. So 15m keeps only big flushes: range ≥ 2.5 ATR, stop ≥ 150 bp, sweep of the 12h low (48 candles); everything else as on 1h.</p>
+  <table><thead><tr><th>15m big flushes, Binance</th><th>Trades</th><th>Avg bp</th><th>t</th></tr></thead><tbody>
+    <tr><td>2022–2023</td><td>124</td><td class="pos">+50</td><td>1.8</td></tr>
+    <tr><td>2024 → Sep 2026</td><td>318</td><td class="pos">+14</td><td>0.7</td></tr>
+    <tr><td>· by year: 2022 / 2023 / 2024 / 2025 / 2026</td><td colspan="3">+13 / +88 / +43 / −23 / +18 bp</td></tr>
+    <tr><td>Same 1h rules on 15m, 2024 → Sep 2026</td><td>5242</td><td class="neg">−7</td><td>−3.4</td></tr>
+  </tbody></table>
+  <p>It fires about 2–3 times a week across 30 tokens. Treat 15m as the weaker of the two: the variant was picked after looking at both halves, and t ≈ 0.7 is well inside luck.</p>
+  <p><b>What failed on the way</b> (so you don't have to retry them): trend pullbacks to EMA 20 (−10 bp both halves), regime-filtered impulse follow (≈ 0), short squeezes even with a BTC bear filter (−135 bp out-of-sample); on 15m: a 1h-trend filter, quicker exits (TP 1.5R, 4h), longer sweep windows — all negative out-of-sample.</p>
+  <p><b>Honest verdict.</b> Positive on alts in the year it was built on, but the BTC/ETH holdout fails, the 2022–2025 alt holdout is flat unless you keep only big flushes, and October 2025's crash supplies about a third of the 2025–26 profit. 2022's bear market lost on every variant. Capital sim on the whole year with 1% risk per trade and 3 slots: +33% with a −26% drawdown; with 30% margin × 50x the account blows up. Treat it as a paper-trading hypothesis. The engine, rules and numbers are all in <span class="mono">scanner/lab/</span>.</p>`;
 
 // ── boot ─────────────────────────────────────────────────────────────────────────────────────
 (async () => {
