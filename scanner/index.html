@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.gateio.ws; base-uri 'none'">
 <title>Scalping Scanner — Agzent</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%232A2220'/><path d='M8 40 L22 40 L30 20 L40 50 L46 34 L56 34' fill='none' stroke='%23D9FF57' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,9 +30,11 @@ body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 var(--body);
 a{color:inherit}
 button,input,select{font:inherit;color:inherit}
 h1,h2,h3{font-family:var(--display);letter-spacing:-.03em;line-height:1.05;margin:0}
+h2.sec{font-size:19px;margin:0 0 10px}
 .mono{font-family:var(--mono)}
 .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.muted{color:var(--muted)} .dim{color:var(--dim)}
 
 /* gate */
 #gate{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(1000px 500px at 50% -10%,rgba(217,255,87,.09),transparent 60%),var(--bg)}
@@ -55,20 +57,29 @@ body:not(.on) .main{display:none}
 .brandico{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--panel2);border:1px solid var(--line2);color:var(--lime);font-size:16px}
 .brand b{font-family:var(--display);font-size:21px}
 .brand small{color:var(--muted);font-size:12px;border:1px solid var(--line2);border-radius:99px;padding:2px 8px}
-.toplinks{display:flex;align-items:center;gap:8px}
+.toplinks{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .toplink{border:1px solid var(--line2);background:var(--panel);border-radius:9px;padding:6px 11px;font-size:12.5px;cursor:pointer;text-decoration:none;color:var(--muted)}
 .toplink:hover{color:var(--text);border-color:var(--line)}
 
 h1.title{font-size:clamp(28px,4.5vw,46px);font-weight:800;margin:6px 0 4px}
 h1.title em{font-style:normal;color:var(--lime)}
-.sub{color:var(--muted);max-width:720px;margin:0 0 16px}
+.sub{color:var(--muted);max-width:760px;margin:0 0 16px}
 .warn-banner{background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--warn);border-radius:12px;padding:12px 16px;color:var(--muted);font-size:13.5px;margin:0 0 18px}
 .warn-banner b{color:var(--text)}
 
+/* tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;position:sticky;top:0;z-index:20;padding:8px 0;background:linear-gradient(var(--bg) 80%,transparent)}
+.tab{border:1px solid var(--line2);background:var(--panel);border-radius:11px;padding:9px 15px;cursor:pointer;color:var(--muted);font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:7px}
+.tab:hover{color:var(--text)}
+.tab[aria-selected=true]{background:var(--lime);color:var(--lime-ink);border-color:var(--lime)}
+.tab .spark{font-size:13px}
+.pane{display:none} .pane.on{display:block}
+
 .stats{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}
-.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:120px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:118px}
 .stat b{display:block;font:800 20px/1.1 var(--display)}
 .stat span{color:var(--muted);font-size:12px}
+.stat.good b{color:var(--ok)} .stat.badv b{color:var(--bad)} .stat.warnv b{color:var(--warn)}
 
 .sessions{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin:0 0 22px}
 .scard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
@@ -81,30 +92,100 @@ h1.title em{font-style:normal;color:var(--lime)}
 .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
 .search{flex:1 1 240px;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:0 12px}
 .search input{flex:1;border:0;background:none;padding:10px 0;outline:none;min-width:0}
-.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:3px}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:3px;flex-wrap:wrap}
 .seg button{border:0;background:none;padding:7px 10px;border-radius:9px;cursor:pointer;color:var(--muted);font-size:12.5px;font-weight:600}
 .seg button[aria-pressed=true]{background:var(--lime);color:var(--lime-ink)}
 
 .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
 table.tk{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
+table.tk.sm{min-width:640px}
 table.tk th{position:sticky;top:0;background:var(--panel2);text-align:right;color:var(--muted);font-weight:600;padding:10px 10px;white-space:nowrap;cursor:pointer;user-select:none;border-bottom:1px solid var(--line2)}
 table.tk th.l{text-align:left}
 table.tk th[aria-sort] .ar{color:var(--lime)}
 table.tk td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
 table.tk td.l{text-align:left}
-table.tk tr:hover td{background:rgba(224,209,209,.03)}
+table.tk tbody tr{cursor:pointer}
+table.tk tr:hover td{background:rgba(224,209,209,.035)}
 .sym{font-family:var(--mono);font-weight:600}
 .pill{display:inline-block;font:600 11px/1 var(--mono);border-radius:6px;padding:4px 7px;background:var(--panel2);border:1px solid var(--line)}
-.st-open{color:var(--lime)} .st-signal{color:var(--warn)} .st-pending{color:var(--info)} .st-idle{color:var(--dim)}
+.st-open,.st-position{color:var(--lime)} .st-signal,.st-pending{color:var(--warn)} .st-idle,.st-none{color:var(--dim)}
 .side-1{color:var(--ok)} .side--1{color:var(--bad)} .side-0{color:var(--dim)}
 .pos{color:var(--ok)} .neg{color:var(--bad)}
 .strat{color:var(--blush);font-family:var(--mono);font-size:11.5px}
 .t-strong{font-weight:700}
 .foot{color:var(--dim);font-size:12.5px;padding:18px 0 40px;border-top:1px solid var(--line);margin-top:22px}
-.refresh{border:1px solid var(--line2);background:var(--panel);border-radius:10px;padding:8px 13px;cursor:pointer;color:var(--muted);font-size:13px}
-.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);background:var(--blush);color:var(--espresso);font-weight:600;padding:12px 18px;border-radius:12px;opacity:0;transition:.3s var(--ease);z-index:30;max-width:calc(100% - 32px)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);background:var(--blush);color:var(--espresso);font-weight:600;padding:12px 18px;border-radius:12px;opacity:0;transition:.3s var(--ease);z-index:30;max-width:calc(100% - 32px);pointer-events:none}
 .toast.on{opacity:1;transform:translate(-50%,0)}
-@media (max-width:560px){ .wrap{padding:0 14px} }
+
+/* panels & forms */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.card + .card{margin-top:14px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px;align-items:start}
+.grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:0 0 14px}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld > span{font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+.fld input,.fld select{background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;outline:none;min-width:0;color:var(--text)}
+.fld input:focus,.fld select:focus{border-color:var(--lime)}
+.fld input[type=number]{width:110px}
+.fld.sm input[type=number]{width:84px}
+.fld.chk{flex-direction:row;align-items:center;gap:7px;padding-bottom:8px}
+.btn{border:1px solid var(--line2);background:var(--panel2);border-radius:11px;padding:9px 15px;cursor:pointer;color:var(--text);font-weight:600;font-size:14px;white-space:nowrap}
+.btn:hover{border-color:var(--blush)}
+.btn.pri{background:var(--lime);color:var(--lime-ink);border-color:var(--lime);font-family:var(--display);font-weight:800;letter-spacing:.02em}
+.btn.pri:hover{filter:brightness(1.05)}
+.btn:disabled{opacity:.55;cursor:progress}
+.btn.sm{padding:5px 10px;font-size:12.5px;border-radius:9px}
+.params{display:flex;flex-wrap:wrap;gap:8px 10px;margin:4px 0 0}
+details.more{margin-top:10px}
+details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
+.prog{height:6px;background:var(--panel2);border-radius:99px;overflow:hidden;margin:10px 0 0;display:none}
+.prog.on{display:block}
+.prog i{display:block;height:100%;width:0;background:var(--lime);transition:width .25s var(--ease)}
+.note{font-size:12.5px;color:var(--dim);margin:8px 0 0}
+.err{color:var(--bad);font-size:13px}
+.empty{color:var(--muted);padding:22px;text-align:center;border:1px dashed var(--line2);border-radius:14px}
+
+/* claude */
+.hero{display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:linear-gradient(135deg,rgba(217,255,87,.09),rgba(122,106,102,.12));border:1px solid var(--line2);border-radius:20px;padding:20px 22px;margin:0 0 16px}
+.hero h2{font-size:24px;margin:0 0 4px}
+.hero p{margin:0;color:var(--muted);font-size:14px;max-width:640px}
+.claude-badge{display:inline-flex;align-items:center;gap:6px;font:700 11px/1 var(--mono);color:var(--lime);border:1px solid rgba(217,255,87,.4);border-radius:99px;padding:5px 9px;margin-bottom:8px;letter-spacing:.04em}
+.setup{background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:14px 15px;display:flex;flex-direction:column;gap:8px}
+.setup.position{border-color:rgba(217,255,87,.5)}
+.setup .hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.setup .hd b{font:800 19px/1 var(--display)}
+.score{font:800 13px/1 var(--mono);padding:6px 8px;border-radius:9px;background:var(--panel2);border:1px solid var(--line2)}
+.score.hi{color:var(--lime-ink);background:var(--lime);border-color:var(--lime)}
+.lv{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;font-size:13px;font-family:var(--mono)}
+.lv .k{color:var(--muted);font-family:var(--body);font-size:12px}
+.lv .p{text-align:right}
+.lv .d{text-align:right;color:var(--dim);font-size:11.5px}
+.lv .tp{color:var(--ok)} .lv .slc{color:var(--bad)} .lv .en{color:var(--lime)}
+.say{font-size:13px;color:var(--muted);margin:0;line-height:1.5}
+.say li{margin:0 0 3px}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:2px 8px}
+.mkt{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.research{font-size:13.5px;color:var(--muted)}
+.research b{color:var(--text)}
+.research table{border-collapse:collapse;font-size:12.5px;margin:8px 0;font-family:var(--mono)}
+.research td,.research th{padding:5px 10px;border-bottom:1px solid var(--line);text-align:right}
+.research td:first-child,.research th:first-child{text-align:left;font-family:var(--body)}
+
+/* chart */
+.chart-legend{position:absolute;left:10px;top:8px;z-index:3;font:12px var(--mono);color:var(--muted);pointer-events:none;text-shadow:0 1px 2px #000}
+.chart-legend b{color:var(--text)}
+.lg-o{margin-left:8px}
+.box-label{font:600 11px var(--mono);color:var(--text);background:rgba(23,17,15,.75);padding:2px 6px;border-radius:5px;white-space:nowrap}
+.chartbox{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+.calc{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:13px}
+.calc span:nth-child(even){font-family:var(--mono);text-align:right}
+.legend-row{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:8px 2px 0}
+.legend-row i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+
+@media (max-width:900px){ .grid2{grid-template-columns:1fr} }
+@media (max-width:560px){ .wrap{padding:0 16px} .hero{padding:16px} .tab{padding:8px 11px;font-size:13px} .fld input[type=number]{width:92px} }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -124,175 +205,132 @@ table.tk tr:hover td{background:rgba(224,209,209,.03)}
 <div class="main">
 <div class="wrap">
   <header class="top">
-    <a class="brand" href="#" onclick="return false"><span class="brandico">📈</span><b>Scalping Scanner</b><small>Agzent</small></a>
+    <a class="brand" href="#scanner"><span class="brandico">📈</span><b>Scalping Scanner</b><small>Agzent</small></a>
     <div class="toplinks"><span class="toplink" id="age">—</span><a class="toplink" href="/bugbounty/">Bug Bounty ↗</a><button class="toplink" id="refreshBtn" type="button">Refresh</button><button class="toplink" id="lockBtn" type="button">Lock</button></div>
   </header>
 
   <h1 class="title">Scalping <em>Scanner</em></h1>
-  <p class="sub">Per-token now-state and 14-day walk-forward record from the scalping-lab bot, across the top USDT perps by volume. Snapshot refreshed on the VPS; the interactive dashboard (backtests, paper sessions) stays on Streamlit.</p>
-  <div class="warn-banner"><b>Research only — paper trading, no live orders, no API keys.</b> t-stat below the chance cutoff can come from luck across this many tokens. No strategy here is reliably profitable after fees — treat every row as a hypothesis, not a signal to trade.</div>
+  <p class="sub">The VPS bot's per-token state and 14-day record, plus live tools that run in your browser on Gate.io perpetual candles: Claude's own scan, TradingView-style charts with entry / stop / take-profit, backtests of every lab strategy, and a capital simulation.</p>
+  <div class="warn-banner"><b>Research only — paper trading, no live orders, no API keys.</b> No strategy here is proven profitable after fees; Claude's included. Treat every setup as a hypothesis, size small, and expect losing streaks.</div>
 
-  <div class="stats" id="stats"></div>
-  <div id="sessionsWrap" style="display:none"><h2 style="font-size:18px;margin:0 0 10px">Paper sessions</h2><div class="sessions" id="sessions"></div></div>
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="scanner" aria-selected="true">Scanner</button>
+    <button class="tab" role="tab" data-tab="claude" aria-selected="false"><span class="spark">✦</span>Scan with Claude</button>
+    <button class="tab" role="tab" data-tab="chart" aria-selected="false">Chart</button>
+    <button class="tab" role="tab" data-tab="backtest" aria-selected="false">Backtest</button>
+    <button class="tab" role="tab" data-tab="money" aria-selected="false">Capital sim</button>
+  </nav>
 
-  <div class="bar">
-    <label class="search"><span aria-hidden="true">⌕</span><span class="sr">Search token</span><input id="q" type="search" placeholder="Filter token…" autocomplete="off"></label>
-    <div class="seg" id="stateSeg" aria-label="State">
-      <button data-v="" aria-pressed="true">All</button><button data-v="open">Open</button><button data-v="signal">Signal</button><button data-v="pending">Pending</button><button data-v="idle">Idle</button>
+  <!-- SCANNER -->
+  <section class="pane on" id="pane-scanner">
+    <div class="stats" id="stats"></div>
+    <div id="sessionsWrap" style="display:none"><h2 class="sec">Paper sessions</h2><div class="sessions" id="sessions"></div></div>
+    <div class="bar">
+      <label class="search"><span aria-hidden="true">⌕</span><span class="sr">Search token</span><input id="q" type="search" placeholder="Filter token…" autocomplete="off"></label>
+      <div class="seg" id="stateSeg" aria-label="State">
+        <button data-v="" aria-pressed="true">All</button><button data-v="open">Open</button><button data-v="signal">Signal</button><button data-v="pending">Pending</button><button data-v="idle">Idle</button>
+      </div>
     </div>
-  </div>
-  <div class="tblwrap"><table class="tk" id="tbl"></table></div>
+    <div class="tblwrap"><table class="tk" id="tbl"></table></div>
+    <p class="note">Click a row to open its chart with the bot's 14-day trades.</p>
+  </section>
+
+  <!-- CLAUDE -->
+  <section class="pane" id="pane-claude">
+    <div class="hero">
+      <div>
+        <div class="claude-badge">✦ CLAUDE · FLUSH &amp; RECLAIM</div>
+        <h2>Scan with Claude</h2>
+        <p>Claude's own strategy, run live on every scanner token: find 1h liquidation flushes that got bought back, then place a limit in the wick with the stop under it, half off at 1R and the rest at 2.5R. Each setup comes with its track record on that token.</p>
+      </div>
+      <div class="ctrls" style="margin:0">
+        <label class="fld"><span>History</span><select id="cDepth"><option value="2000">83 days</option><option value="5000">208 days</option><option value="10000" selected>416 days</option></select></label>
+        <button class="btn pri" id="cRun" type="button">✦ Scan with Claude</button>
+      </div>
+    </div>
+    <div class="prog" id="cProg"><i></i></div>
+    <div id="cOut"><div class="empty">Press <b>Scan with Claude</b>. It pulls 1h candles for the scanner's tokens from Gate.io (≈ 20–60 s for the full 416 days) and everything runs in this browser.</div></div>
+    <details class="more card" id="research" style="margin-top:16px">
+      <summary><b>How Claude built this strategy — and how much to trust it</b></summary>
+      <div class="research" id="researchBody"></div>
+    </details>
+  </section>
+
+  <!-- CHART -->
+  <section class="pane" id="pane-chart">
+    <div class="ctrls">
+      <label class="fld"><span>Token</span><select id="chSym"></select></label>
+      <label class="fld"><span>Custom</span><input id="chCustom" placeholder="e.g. LINKUSDT" style="width:130px" autocomplete="off"></label>
+      <label class="fld"><span>Timeframe</span><select id="chTf"><option>5m</option><option>15m</option><option selected>1h</option><option>4h</option></select></label>
+      <label class="fld"><span>Overlay</span><select id="chOverlay"></select></label>
+      <label class="fld"><span>Candles</span><select id="chDepth"><option value="500">500</option><option value="1000">1000</option><option value="2000" selected>2000</option><option value="5000">5000</option></select></label>
+      <button class="btn pri" id="chLoad" type="button">Load</button>
+      <a class="btn" id="chTv" href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">Open in TradingView ↗</a>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="chartbox" id="chBox"></div>
+        <div class="legend-row"><span><i style="background:#8EC5FF"></i>EMA 20</span><span><i style="background:#FFC857"></i>EMA 50</span><span><i style="background:#E0D1D1"></i>EMA 200</span><span><i style="background:rgba(126,224,138,.6)"></i>reward zone</span><span><i style="background:rgba(255,122,107,.6)"></i>risk zone</span><span class="dim">Times in WIB · candles from Gate.io perps</span></div>
+      </div>
+      <div>
+        <div class="card" id="chSetup"><div class="muted">Load a chart to see the current setup.</div></div>
+        <div class="card" id="chTrades"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BACKTEST -->
+  <section class="pane" id="pane-backtest">
+    <div class="card">
+      <div class="ctrls" style="margin:0">
+        <label class="fld"><span>Token</span><select id="btSym"></select></label>
+        <label class="fld"><span>Strategy</span><select id="btStrat"></select></label>
+        <label class="fld"><span>Timeframe</span><select id="btTf"></select></label>
+        <label class="fld"><span>History</span><select id="btDepth"><option value="2000">2000 candles</option><option value="5000">5000 candles</option><option value="10000" selected>10000 candles (max)</option></select></label>
+        <button class="btn pri" id="btRun" type="button">Run backtest</button>
+        <button class="btn" id="btCompare" type="button">Compare all strategies</button>
+      </div>
+      <p class="note" id="btStratNote"></p>
+      <details class="more"><summary>Parameters &amp; costs</summary>
+        <div class="params" id="btParams"></div>
+        <div class="params" style="margin-top:10px">
+          <label class="fld sm"><span>Taker fee bp</span><input type="number" id="btFeeT" value="5" step="0.5" min="0"></label>
+          <label class="fld sm"><span>Maker fee bp</span><input type="number" id="btFeeM" value="2" step="0.5" min="0"></label>
+          <label class="fld sm"><span>Slippage bp</span><input type="number" id="btSlip" value="1" step="0.5" min="0"></label>
+          <button class="btn sm" id="btReset" type="button" style="align-self:flex-end;margin-bottom:2px">Reset defaults</button>
+        </div>
+      </details>
+      <div class="prog" id="btProg"><i></i></div>
+    </div>
+    <div id="btOut" style="margin-top:14px"></div>
+  </section>
+
+  <!-- MONEY -->
+  <section class="pane" id="pane-money">
+    <div class="card">
+      <div class="ctrls" style="margin:0">
+        <label class="fld"><span>Trades from</span><select id="mSrc"></select></label>
+        <label class="fld"><span>Capital $</span><input type="number" id="mCap" value="100" min="1" step="10"></label>
+        <label class="fld"><span>Sizing</span><select id="mMode"><option value="risk">Risk % per trade (from stop)</option><option value="margin">Margin % per trade</option></select></label>
+        <label class="fld sm" id="mRiskF"><span>Risk %</span><input type="number" id="mRisk" value="1" min="0.1" step="0.25"></label>
+        <label class="fld sm" id="mMarginF"><span>Margin %</span><input type="number" id="mMargin" value="10" min="1" step="1"></label>
+        <label class="fld sm"><span>Leverage (max)</span><input type="number" id="mLev" value="10" min="1" max="125" step="1"></label>
+        <label class="fld sm"><span>Max positions</span><input type="number" id="mPos" value="3" min="1" max="50" step="1"></label>
+        <label class="fld sm"><span>Daily loss $ (0=off)</span><input type="number" id="mDl" value="0" min="0" step="1"></label>
+        <label class="fld sm"><span>Daily target $ (0=off)</span><input type="number" id="mDt" value="0" min="0" step="1"></label>
+        <label class="fld chk"><input type="checkbox" id="mComp" checked><span>Compound</span></label>
+        <label class="fld chk" id="mAutoF"><input type="checkbox" id="mAuto" checked><span>Auto-lower leverage so liquidation sits beyond the stop</span></label>
+      </div>
+      <p class="note">One shared balance across tokens, isolated margin. A trade whose worst move reaches 1/leverage − 0.4% maintenance is liquidated (whole margin lost). Fees and slippage are inside each trade's result; funding is not modelled.</p>
+    </div>
+    <div id="mOut" style="margin-top:14px"><div class="empty">Run <b>Scan with Claude</b> or a <b>Backtest</b> first — their trades feed this simulation.</div></div>
+  </section>
 
   <footer class="foot" id="foot"></footer>
 </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
-
-<script>
-const $ = s => document.querySelector(s);
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const DAY = 864e5;
-const fmtDT = s => s ? new Date(s).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
-const ago = s => { if (!s) return ''; const d = (Date.now() - Date.parse(s)) / DAY; if (d < 1 / 24) return Math.max(1, Math.round(d * 1440)) + 'm ago'; if (d < 1) return Math.round(d * 24) + 'h ago'; return Math.round(d) + 'd ago'; };
-const n2 = (v, d = 1) => (v == null || isNaN(v)) ? '—' : Number(v).toFixed(d);
-const sgn = (v, d = 1) => (v == null || isNaN(v)) ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(d);
-const pct = v => (v == null || isNaN(v)) ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(1) + '%';
-const vol = v => { if (v == null || isNaN(v)) return '—'; if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B'; if (v >= 1e6) return '$' + (v / 1e6).toFixed(0) + 'M'; return '$' + Math.round(v); };
-const money = v => (v == null || isNaN(v)) ? '—' : '$' + Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 });
-const cls = v => v == null || isNaN(v) ? '' : (v >= 0 ? 'pos' : 'neg');
-function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 3200); }
-
-// crypto (same scheme + passphrase as /bugbounty)
-const te = new TextEncoder(), td = new TextDecoder();
-const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-async function deriveKey(pw, salt, iters) {
-  const base = await crypto.subtle.importKey('raw', te.encode(pw), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iters, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
-}
-async function fetchPkg() {
-  let file = 'scanner.enc.json';
-  try { const m = await (await fetch('scanner.manifest.json?_=' + Date.now(), { cache: 'no-store' })).json(); if (m && m.file) file = m.file; } catch (_) { }
-  return (await fetch(file + '?_=' + Date.now(), { cache: 'no-store' })).json();
-}
-async function decryptSnap(pw) {
-  const pkg = await fetchPkg();
-  const key = await deriveKey(pw, b64d(pkg.salt), pkg.iter || 200000);
-  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(pkg.iv) }, key, b64d(pkg.ct));
-  return JSON.parse(td.decode(pt));
-}
-
-let SNAP = null, PW = '', ST = { q: '', state: '', sort: 'fwd_t', dir: 1 };
-
-const COLS = [
-  { k: 'symbol', t: 'Token', l: 1, kind: 'sym' },
-  { k: 'state', t: 'State', l: 1, kind: 'state' },
-  { k: 'side', t: 'Side', l: 1, kind: 'side' },
-  { k: 'strategy', t: 'Strategy', l: 1, kind: 'strat' },
-  { k: 'fwd_t', t: 't-stat', kind: 'tstat' },
-  { k: 'fwd_avg_bps', t: 'bp/trade', kind: 'sgn' },
-  { k: 'fwd_win_rate', t: 'Win', kind: 'winrate' },
-  { k: 'fwd_trades', t: 'Trades', kind: 'int' },
-  { k: 'fwd_return_pct', t: '14d ret', kind: 'pct' },
-  { k: 'fwd_max_dd_bps', t: 'Max DD', kind: 'sgn' },
-  { k: 'unreal_bps', t: 'Unreal', kind: 'sgn' },
-  { k: 'trades_today', t: 'T.today', kind: 'int' },
-  { k: 'signals_today', t: 'Sig.today', kind: 'int' },
-  { k: 'chg24', t: '24h', kind: 'pct' },
-  { k: 'vol24', t: 'Vol 24h', kind: 'vol' },
-  { k: 'cost_bps', t: 'Cost bp', kind: 'num0' },
-  { k: 'corr_btc', t: 'BTC ρ', kind: 'num2' },
-];
-
-async function unlock(pw) { SNAP = await decryptSnap(pw); PW = pw; document.body.classList.add('on'); render(); }
-$('#gateForm').addEventListener('submit', async e => {
-  e.preventDefault(); const pw = $('#pw').value, btn = $('#gateBtn'), err = $('#gerr');
-  btn.disabled = true; btn.textContent = 'Decrypting…'; err.textContent = '';
-  try { await unlock(pw); try { sessionStorage.setItem('agz_bb_pw', pw); } catch (_) { } }
-  catch (_) { err.textContent = 'Wrong passphrase, or the snapshot could not be read.'; btn.disabled = false; btn.textContent = 'Unlock'; }
-});
-$('#lockBtn').addEventListener('click', () => { try { sessionStorage.removeItem('agz_bb_pw'); } catch (_) { } location.reload(); });
-$('#refreshBtn').addEventListener('click', async () => {
-  if (!PW) return; const b = $('#refreshBtn'); b.textContent = '…';
-  try { SNAP = await decryptSnap(PW); render(); toast('Refreshed — scan made ' + fmtDT(SNAP.made)); } catch (e) { toast('Refresh failed'); }
-  finally { b.textContent = 'Refresh'; }
-});
-
-function render() {
-  const s = SNAP; if (!s) return;
-  $('#age').textContent = 'Scan ' + ago(s.made);
-  const u = s.universe || {}, c = s.config || {};
-  $('#stats').innerHTML = [
-    ['Tokens', (s.rows || []).length],
-    ['Scan made', fmtDT(s.made)],
-    ['Record', (c.days || 14) + ' days'],
-    ['Lookback', (c.lookback_months || '—') + ' mo'],
-    ['Mode', c.mode || '—'],
-    ['Universe', (u.above_volume || '—') + ' liquid'],
-    ['Chance cut', '±' + n2(s.cut, 1) + ' t'],
-  ].map(([k, v]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
-
-  const ss = s.sessions || [];
-  $('#sessionsWrap').style.display = ss.length ? '' : 'none';
-  $('#sessions').innerHTML = ss.map(se => {
-    const r = se.summary || {}, up = (r.return ?? 0) >= 0;
-    const m = se.money || {};
-    return `<div class="scard"><h3>${esc(se.name || se.id)}</h3>
-      <div class="pnl ${up ? 'up' : 'down'}">${r.return == null ? '—' : pct(r.return * 100)}</div>
-      <div class="meta">Equity ${money(r.equity)} · P&L ${money(r.profit)} of ${money(m.capital)}<br>
-      ${se.trades || 0} trades · ${se.days || 0} days · ${se.stopped ? 'stopped' : 'running'} · updated ${ago(se.updated || se.started)}</div>
-      <div class="mono">${esc(m.margin_pct ?? '?')}% × ${esc(m.leverage ?? '?')}x · max ${esc(m.max_positions ?? '?')} pos · top ${esc(se.scan?.top ?? '?')}</div></div>`;
-  }).join('');
-
-  renderTable();
-}
-function renderTable() {
-  const rows = (SNAP.rows || []).filter(r =>
-    (!ST.state || r.state === ST.state) &&
-    (!ST.q || `${r.symbol} ${r.strategy}`.toLowerCase().includes(ST.q)));
-  const key = ST.sort;
-  rows.sort((a, b) => {
-    if (key === 'symbol' || key === 'strategy' || key === 'state') return String(a[key] || '').localeCompare(String(b[key] || '')) * ST.dir;
-    const av = a[key], bv = b[key];
-    const an = (av == null || isNaN(av)) ? -Infinity : av, bn = (bv == null || isNaN(bv)) ? -Infinity : bv;
-    return (bn - an) * ST.dir;
-  });
-  const th = COLS.map(c => `<th class="${c.l ? 'l' : ''}" data-k="${c.k}" ${ST.sort === c.k ? `aria-sort="${ST.dir > 0 ? 'descending' : 'ascending'}"` : ''}>${esc(c.t)}${ST.sort === c.k ? ` <span class="ar">${ST.dir > 0 ? '↓' : '↑'}</span>` : ''}</th>`).join('');
-  const body = rows.map(r => '<tr>' + COLS.map(c => cell(r, c)).join('') + '</tr>').join('');
-  $('#tbl').innerHTML = `<thead><tr>${th}</tr></thead><tbody>${body || `<tr><td class="l" colspan="${COLS.length}">No tokens match.</td></tr>`}</tbody>`;
-  $('#foot').textContent = `${rows.length} tokens shown · snapshot generated ${fmtDT(SNAP.generatedAt)} · data decrypted locally in your browser · research only, not financial advice.`;
-}
-function cell(r, c) {
-  const v = r[c.k];
-  switch (c.kind) {
-    case 'sym': return `<td class="l"><span class="sym">${esc(v)}</span></td>`;
-    case 'state': return `<td class="l"><span class="pill st-${esc(v)}">${esc(v)}</span></td>`;
-    case 'side': return `<td class="l side-${esc(v)}">${v === 1 ? 'long' : v === -1 ? 'short' : '—'}</td>`;
-    case 'strat': return `<td class="l"><span class="strat">${esc(v || '—')}</span>${r.tf ? ` <span class="mono" style="color:var(--dim)">${esc(r.tf)}</span>` : ''}</td>`;
-    case 'tstat': { const strong = v != null && Math.abs(v) >= (SNAP.cut || 2); return `<td class="${cls(v)} ${strong ? 't-strong' : ''}">${sgn(v, 2)}</td>`; }
-    case 'sgn': return `<td class="${cls(v)}">${sgn(v, 0)}</td>`;
-    case 'winrate': return `<td>${v == null || isNaN(v) ? '—' : Math.round(v * 100) + '%'}</td>`;
-    case 'int': return `<td>${v == null ? '—' : v}</td>`;
-    case 'pct': return `<td class="${cls(v)}">${pct(v)}</td>`;
-    case 'vol': return `<td>${vol(v)}</td>`;
-    case 'num0': return `<td>${n2(v, 0)}</td>`;
-    case 'num2': return `<td>${n2(v, 2)}</td>`;
-    default: return `<td>${esc(v)}</td>`;
-  }
-}
-$('#tbl').addEventListener('click', e => {
-  const th = e.target.closest('th'); if (!th) return;
-  const k = th.dataset.k;
-  if (ST.sort === k) ST.dir *= -1; else { ST.sort = k; ST.dir = 1; }
-  renderTable();
-});
-$('#q').addEventListener('input', e => { ST.q = e.target.value.trim().toLowerCase(); renderTable(); });
-$('#stateSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $('#stateSeg').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); ST.state = b.dataset.v; renderTable(); });
-
-(async () => {
-  let pw = ''; try { pw = sessionStorage.getItem('agz_bb_pw') || ''; } catch (_) { }
-  if (pw) { try { await unlock(pw); return; } catch (_) { try { sessionStorage.removeItem('agz_bb_pw'); } catch (e) { } } }
-  $('#pw')?.focus();
-})();
-</script>
+<script src="vendor/lightweight-charts.standalone.production.js"></script>
+<script type="module" src="app.js?v=20261023b"></script>
 </body>
 </html>
