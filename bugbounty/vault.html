@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agzent — Bug Bounty Programs</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#2a2220">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='10' fill='%232a2220'/><path d='M9 23 16 9l7 14' stroke='%23E0D1D1' stroke-width='3.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/><circle cx='16' cy='18.5' r='2.8' fill='%23D9FF57'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --mocha:#7A6A66;--blush:#E0D1D1;
+  --cream:#F8F3F1;--paper:#FFFDFC;--espresso:#2A2220;--ink:#231B19;
+  --lime:#D9FF57;--lime-ink:#1E2400;
+  --muted:#6E5F5B;--line:rgba(122,106,102,.24);
+  --ok:#1f7a3d;--warn:#9a6a00;--bad:#9a2a2a;
+  --r:22px;--max:1080px;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--cream);color:var(--ink);font:16px/1.6 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit}
+svg{display:block}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:var(--display);letter-spacing:-.03em;line-height:1.05;margin:0}
+h1{font-size:clamp(30px,5vw,46px);font-weight:800}
+h2{font-size:22px;font-weight:700}
+h3{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.mono{font-family:var(--mono)}
+.muted{color:var(--muted)}
+
+/* ---------- lock gate ---------- */
+#gate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(120% 120% at 50% -10%,#3a2f2c,#241c1a);padding:24px}
+#gate.hidden{display:none}
+.lock{width:100%;max-width:420px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);
+  padding:34px 30px;box-shadow:0 30px 80px -30px rgba(0,0,0,.6);text-align:center}
+.lock .mark{width:56px;height:56px;margin:0 auto 18px;border-radius:16px;background:var(--espresso);
+  display:flex;align-items:center;justify-content:center}
+.lock .mark svg{width:30px;height:30px}
+.lock h1{font-size:26px;margin-bottom:6px}
+.lock p{color:var(--muted);font-size:14px;margin:0 0 22px}
+.lock form{display:flex;flex-direction:column;gap:12px}
+.lock input{font:600 16px var(--body);padding:14px 16px;border:1.5px solid var(--line);border-radius:14px;
+  background:var(--cream);color:var(--ink);outline:none;transition:border .2s}
+.lock input:focus{border-color:var(--mocha)}
+.lock button{font:700 15px var(--body);padding:14px;border:0;border-radius:14px;background:var(--espresso);
+  color:var(--cream);cursor:pointer;transition:transform .2s var(--ease),opacity .2s}
+.lock button:hover{transform:translateY(-1px)}
+.lock button:disabled{opacity:.6;cursor:default;transform:none}
+.lock .err{color:var(--bad);font-size:13px;font-weight:600;min-height:18px;margin-top:2px}
+
+/* ---------- top bar ---------- */
+#app{display:none}
+#app.on{display:block}
+.top{position:sticky;top:0;z-index:40;background:rgba(248,243,241,.82);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:14px;height:62px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font:800 18px var(--display);letter-spacing:-.04em}
+.brand .d{width:30px;height:30px;border-radius:9px;background:var(--espresso);display:flex;align-items:center;justify-content:center}
+.brand .d svg{width:18px;height:18px}
+.brand small{display:block;font:600 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:1px}
+.top .spacer{flex:1}
+.top .meta{font-size:12px;color:var(--muted);text-align:right}
+.lockbtn{font:600 13px var(--body);border:1px solid var(--line);background:var(--paper);border-radius:99px;
+  padding:7px 14px;cursor:pointer;color:var(--ink)}
+.lockbtn:hover{background:var(--blush)}
+
+/* ---------- hero / search ---------- */
+.hero{padding:40px 0 10px}
+.hero .lead{color:var(--muted);max-width:60ch;margin:10px 0 0}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin:26px 0 8px}
+.search{flex:1;min-width:240px;position:relative}
+.search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;opacity:.5}
+.search input{width:100%;font:500 15px var(--body);padding:13px 14px 13px 42px;border:1.5px solid var(--line);
+  border-radius:14px;background:var(--paper);outline:none}
+.search input:focus{border-color:var(--mocha)}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:600 13px var(--body);padding:10px 15px;border-radius:99px;border:1px solid var(--line);
+  background:var(--paper);cursor:pointer;transition:all .2s}
+.chip.active{background:var(--espresso);color:var(--cream);border-color:var(--espresso)}
+.sortsel{font:600 13px var(--body);padding:10px 14px;border-radius:99px;border:1px solid var(--line);background:var(--paper);cursor:pointer;color:var(--ink);outline:none}
+.sortsel:focus{border-color:var(--mocha)}
+
+/* ---------- program grid ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:22px 0 60px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:22px;cursor:pointer;
+  transition:transform .3s var(--ease),box-shadow .3s var(--ease),border-color .3s;display:flex;flex-direction:column;gap:12px}
+.card:hover{transform:translateY(-3px);box-shadow:0 18px 44px -24px rgba(42,34,32,.5);border-color:var(--mocha)}
+.card .row1{display:flex;justify-content:space-between;align-items:start;gap:10px}
+.card h3{font-size:19px}
+.card .org{font-size:13px;color:var(--muted);margin-top:2px}
+.card .desc{font-size:14px;color:var(--ink);opacity:.88;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card .when{font:600 12px var(--mono);color:var(--muted)}
+.card .foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto;padding-top:6px}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.pill{font:600 11px var(--body);padding:4px 9px;border-radius:99px;background:var(--cream);border:1px solid var(--line);color:var(--muted)}
+.status{font:700 11px var(--body);letter-spacing:.04em;text-transform:uppercase;padding:4px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:5px}
+.status i{width:6px;height:6px;border-radius:50%}
+.status.active{background:rgba(31,122,61,.12);color:var(--ok)} .status.active i{background:var(--ok)}
+.status.paused{background:rgba(154,106,0,.12);color:var(--warn)} .status.paused i{background:var(--warn)}
+.status.archived{background:rgba(110,95,91,.14);color:var(--muted)} .status.archived i{background:var(--muted)}
+.reward{font:700 13px var(--mono);color:var(--lime-ink);background:var(--lime);padding:4px 10px;border-radius:99px}
+/* my-progress badge */
+.wstat{font:700 11px var(--body);letter-spacing:.03em;text-transform:uppercase;padding:4px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:5px}
+.wstat i{width:6px;height:6px;border-radius:50%}
+.wstat.new{background:rgba(110,95,91,.12);color:var(--muted)} .wstat.new i{background:var(--muted)}
+.wstat.queued{background:rgba(122,106,102,.16);color:var(--mocha)} .wstat.queued i{background:var(--mocha)}
+.wstat.in_progress{background:var(--lime);color:var(--lime-ink)} .wstat.in_progress i{background:var(--lime-ink)}
+.wstat.submitted{background:rgba(154,106,0,.14);color:var(--warn)} .wstat.submitted i{background:var(--warn)}
+.wstat.resolved{background:rgba(31,122,61,.12);color:var(--ok)} .wstat.resolved i{background:var(--ok)}
+.wstat.blocked{background:rgba(154,42,42,.12);color:var(--bad)} .wstat.blocked i{background:var(--bad)}
+.auto{font:700 11px var(--body);padding:4px 9px;border-radius:99px;display:inline-flex;gap:4px;align-items:center;border:1px solid var(--line)}
+.auto.on{background:var(--lime);color:var(--lime-ink);border-color:var(--lime)}
+.auto.off{background:var(--cream);color:var(--muted)}
+.mrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.wfilters{margin-top:12px}
+.auth{font-size:13px;color:var(--muted);margin:12px 0 0;max-width:70ch}
+.auth b{color:var(--ink)}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:60px 0}
+
+/* ---------- detail ---------- */
+.detail{display:none;padding:28px 0 80px}
+.detail.on{display:block}
+.back{display:inline-flex;align-items:center;gap:7px;font:600 14px var(--body);border:1px solid var(--line);
+  background:var(--paper);border-radius:99px;padding:8px 15px;cursor:pointer;margin-bottom:22px}
+.back:hover{background:var(--blush)}
+.dhead{display:flex;justify-content:space-between;align-items:start;gap:18px;flex-wrap:wrap;margin-bottom:6px}
+.dhead .ttl h1{margin-bottom:6px}
+.dhead .org{color:var(--muted);font-size:15px}
+.srcbtn{display:inline-flex;align-items:center;gap:8px;font:700 14px var(--body);background:var(--espresso);
+  color:var(--cream);text-decoration:none;padding:12px 18px;border-radius:99px;white-space:nowrap}
+.srcbtn:hover{opacity:.9}
+.dmeta{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 26px}
+.summary{font-size:17px;line-height:1.7;max-width:70ch;margin:0 0 30px}
+
+.sec{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:24px 26px;margin-bottom:16px}
+.sec > h2{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.sec > h2 .ic{width:28px;height:28px;border-radius:8px;background:var(--cream);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.sec > h2 .ic svg{width:16px;height:16px}
+
+.rewardgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.rw{border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center;background:var(--cream)}
+.rw .lvl{font:700 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.rw .amt{font:700 20px var(--mono);margin-top:4px}
+.rw.critical{background:var(--lime);border-color:var(--lime)} .rw.critical .lvl,.rw.critical .amt{color:var(--lime-ink)}
+
+table.scope{width:100%;border-collapse:collapse;font-size:14px}
+table.scope th{text-align:left;font:700 12px var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
+  padding:8px 10px;border-bottom:1.5px solid var(--line)}
+table.scope td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+table.scope td.a{font-family:var(--mono);font-size:13px;font-weight:600}
+table.scope tr:last-child td{border-bottom:0}
+.scopewrap h3{margin:4px 0 10px;display:flex;align-items:center;gap:7px}
+.scopewrap h3 .dot{width:9px;height:9px;border-radius:50%}
+.scopewrap h3 .dot.in{background:var(--ok)} .scopewrap h3 .dot.out{background:var(--bad)}
+.scopewrap + .scopewrap{margin-top:22px}
+
+.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px}
+.steps li{counter-increment:s;position:relative;padding:14px 16px 14px 52px;background:var(--cream);
+  border:1px solid var(--line);border-radius:14px}
+.steps li::before{content:counter(s);position:absolute;left:14px;top:14px;width:26px;height:26px;border-radius:8px;
+  background:var(--espresso);color:var(--cream);font:700 13px var(--mono);display:flex;align-items:center;justify-content:center}
+.steps li b{font-family:var(--display);letter-spacing:-.01em}
+.steps li .hint{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+
+.kv{display:grid;grid-template-columns:auto 1fr;gap:10px 18px;font-size:14px}
+.kv dt{font-weight:700;color:var(--muted)}
+.kv dd{margin:0}
+.kv dd a{color:var(--mocha);font-weight:600;word-break:break-all}
+
+.policy{font-size:14.5px;line-height:1.7;white-space:pre-wrap}
+.safeharbor{display:flex;gap:10px;align-items:start;background:rgba(31,122,61,.08);border:1px solid rgba(31,122,61,.25);
+  border-radius:14px;padding:14px 16px;margin-top:14px;font-size:13.5px}
+.safeharbor svg{width:18px;height:18px;flex:0 0 auto;margin-top:2px;color:var(--ok)}
+
+.foot-note{text-align:center;color:var(--muted);font-size:12.5px;padding:30px 0 50px}
+@media (max-width:560px){.sec{padding:20px 18px}.hero{padding:28px 0 6px}}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOCK GATE ===================== -->
+<div id="gate">
+  <div class="lock">
+    <div class="mark"><svg viewBox="0 0 32 32"><path d="M9 23 16 9l7 14" stroke="#E0D1D1" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="18.5" r="2.8" fill="#D9FF57"/></svg></div>
+    <h1>Agzent VDP Vault</h1>
+    <p>Private bug-bounty & disclosure program directory. Enter the passphrase to decrypt.</p>
+    <form id="gateForm" autocomplete="off">
+      <input id="pw" type="password" placeholder="Passphrase" autocomplete="current-password" autofocus>
+      <button id="go" type="submit">Unlock</button>
+      <div class="err" id="err"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app">
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="#" onclick="showList();return false">
+        <span class="d"><svg viewBox="0 0 32 32"><path d="M9 23 16 9l7 14" stroke="#E0D1D1" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="18.5" r="2.8" fill="#D9FF57"/></svg></span>
+        <span>Agzent<small>Bug Bounty</small></span>
+      </a>
+      <div class="spacer"></div>
+      <div class="meta" id="metaInfo"></div>
+      <button class="lockbtn" onclick="relock()">Lock</button>
+    </div>
+  </header>
+
+  <!-- LIST VIEW -->
+  <main id="list">
+    <section class="hero wrap">
+      <h1>Bug Bounty &amp; Disclosure Programs</h1>
+      <p class="lead">A private, curated directory of vulnerability disclosure and bug-bounty programs. Each entry records where it was sourced, its scope, how to submit a report, and exactly what a report needs to contain.</p>
+      <p class="auth" id="authLine"></p>
+      <div class="controls">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="q" placeholder="Search programs, orgs, assets, tags…" oninput="render()">
+        </div>
+        <div class="filters" id="filters"></div>
+        <select class="sortsel" id="sort" onchange="render()" aria-label="Sort programs">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="reward">Highest reward</option>
+          <option value="name">A–Z</option>
+        </select>
+      </div>
+      <div class="filters wfilters" id="wfilters"></div>
+    </section>
+    <section class="wrap"><div class="grid" id="grid"></div></section>
+  </main>
+
+  <!-- DETAIL VIEW -->
+  <main id="detail" class="detail"><div class="wrap" id="detailBody"></div></main>
+
+  <div class="foot-note wrap" id="footNote"></div>
+</div>
+
+<script>
+/* ---------------- crypto: AES-GCM + PBKDF2 ---------------- */
+const enc = new TextEncoder(), dec = new TextDecoder();
+const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+async function deriveKey(pw, salt, iters){
+  const base = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt, iterations:iters, hash:'SHA-256'},
+    base, {name:'AES-GCM', length:256}, false, ['decrypt']);
+}
+async function decryptPayload(pw, pkg){
+  const salt = b64d(pkg.salt), iv = b64d(pkg.iv), ct = b64d(pkg.ct);
+  const key = await deriveKey(pw, salt, pkg.iter || 200000);
+  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, ct);
+  return JSON.parse(dec.decode(pt));
+}
+
+/* ---------------- state ---------------- */
+let DATA = null, activeTag = 'all', activeWork = 'all';
+const $ = id => document.getElementById(id);
+
+/* my-progress states (this is YOUR tracking, separate from the program's own status) */
+const WSTATES = ['new','queued','in_progress','submitted','resolved','blocked'];
+const WLABEL = {new:'New', queued:'Queued', in_progress:'In progress', submitted:'Submitted', resolved:'Resolved', blocked:'Needs registration'};
+function wstat(p){ const w=(p.workStatus||'new'); return WSTATES.includes(w)?w:'new'; }
+function wstatBadge(p){ const w=wstat(p); return `<span class="wstat ${w}"><i></i>${esc(WLABEL[w]||w)}</span>`; }
+function autoEligible(p){
+  if(p.auto===true) return true;
+  if(p.auto===false) return false;
+  const sub=p.submission||{};
+  if((sub.channel||'').toLowerCase()==='email' || sub.email) return true;
+  const auth=((DATA&&DATA.authorizedPlatforms)||[]).map(x=>String(x).toLowerCase()).filter(Boolean);
+  const plat=String((p.source&&p.source.platform)||sub.platform||'').toLowerCase();
+  return auth.some(a=>plat.includes(a));
+}
+function autoPill(p){ const on=autoEligible(p); return `<span class="auto ${on?'on':'off'}" title="${on?'Agent may auto-execute':'Register platform first, then tell the agent'}">${on?'⚡ Auto':'✋ Manual'}</span>`; }
+
+/* ---------------- gate ---------------- */
+$('gateForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const pw = $('pw').value, btn = $('go'), err = $('err');
+  if(!pw) return;
+  btn.disabled = true; btn.textContent = 'Decrypting…'; err.textContent='';
+  try{
+    const pkg = await (await fetch('programs.enc.json?_=' + Date.now(), {cache:'no-store'})).json();
+    DATA = await decryptPayload(pw, pkg);
+    try{ sessionStorage.setItem('agz_bb_pw', pw); }catch(_){}
+    boot();
+  }catch(ex){
+    err.textContent = 'Wrong passphrase, or no data published yet.';
+    btn.disabled = false; btn.textContent = 'Unlock';
+  }
+});
+// auto-unlock within a session
+(async () => {
+  let pw=''; try{ pw = sessionStorage.getItem('agz_bb_pw') || ''; }catch(_){}
+  if(!pw) return;
+  try{
+    const pkg = await (await fetch('programs.enc.json?_=' + Date.now(), {cache:'no-store'})).json();
+    DATA = await decryptPayload(pw, pkg); boot();
+  }catch(_){ try{ sessionStorage.removeItem('agz_bb_pw'); }catch(e){} }
+})();
+
+function relock(){ try{ sessionStorage.removeItem('agz_bb_pw'); }catch(_){} location.reload(); }
+
+function boot(){
+  $('gate').classList.add('hidden');
+  $('app').classList.add('on');
+  const n = (DATA.programs||[]).length;
+  $('metaInfo').innerHTML = n + ' program' + (n===1?'':'s') + (DATA.updated? ' · updated ' + DATA.updated : '');
+  $('footNote').textContent = 'Agzent private directory · ' + (DATA.programs||[]).length + ' entries · data decrypted locally in your browser';
+  const auth = DATA.authorizedPlatforms || [];
+  $('authLine').innerHTML = '<b>⚡ Auto-run channels:</b> email' + (auth.length? ' + ' + auth.map(esc).join(', ') : '') +
+    '. Programs on any other platform stay <b>✋ Manual</b> — register first, then tell your agent.';
+  buildFilters(); buildWorkFilters(); render(); showList();
+}
+function buildWorkFilters(){
+  const present = new Set((DATA.programs||[]).map(wstat));
+  const states = ['all', ...WSTATES.filter(s=>present.has(s))];
+  $('wfilters').innerHTML = states.map(s=>{
+    const n = s==='all' ? (DATA.programs||[]).length : (DATA.programs||[]).filter(p=>wstat(p)===s).length;
+    return `<button class="chip${s===activeWork?' active':''}" onclick="setWork('${s}')">${s==='all'?'All progress':esc(WLABEL[s]||s)} <span style="opacity:.6">${n}</span></button>`;
+  }).join('');
+}
+function setWork(w){ activeWork=w; buildWorkFilters(); render(); }
+
+/* ---------------- filters ---------------- */
+function buildFilters(){
+  const tags = new Set();
+  (DATA.programs||[]).forEach(p => (p.tags||[]).forEach(t => tags.add(t)));
+  const all = ['all', ...[...tags].sort()];
+  $('filters').innerHTML = all.map(t =>
+    `<button class="chip${t===activeTag?' active':''}" onclick="setTag('${esc(t)}')">${t==='all'?'All':esc(t)}</button>`
+  ).join('');
+}
+function setTag(t){ activeTag=t; buildFilters(); render(); }
+
+/* ---------------- list render ---------------- */
+function render(){
+  const q = ($('q').value||'').toLowerCase().trim();
+  let items = (DATA.programs||[]).filter(p=>{
+    if(activeTag!=='all' && !(p.tags||[]).includes(activeTag)) return false;
+    if(activeWork!=='all' && wstat(p)!==activeWork) return false;
+    if(!q) return true;
+    const hay = [p.name,p.org,p.summary,(p.tags||[]).join(' '),
+      ...((p.scope&&p.scope.in)||[]).map(s=>s.asset)].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+  const s=($('sort')||{}).value||'newest';
+  if(s==='reward') items.sort((a,b)=>rewardVal(b)-rewardVal(a)||a.name.localeCompare(b.name));
+  else if(s==='name') items.sort((a,b)=>a.name.localeCompare(b.name));
+  else if(s==='oldest') items.sort((a,b)=>progDate(a)-progDate(b)||a.name.localeCompare(b.name));
+  else items.sort((a,b)=>progDate(b)-progDate(a)||a.name.localeCompare(b.name));
+  const g=$('grid');
+  if(!items.length){ g.innerHTML='<div class="empty">No programs match. Hermes can add one by editing the data file.</div>'; return; }
+  g.innerHTML = items.map(p=>{
+    const top = topReward(p);
+    return `<article class="card" onclick="showDetail('${esc(p.id)}')">
+      <div class="row1">
+        <div><h3>${esc(p.name)}</h3><div class="org">${esc(p.org||'')}</div></div>
+        <span class="status ${esc(p.status||'active')}"><i></i>${esc(p.status||'active')}</span>
+      </div>
+      <p class="desc">${esc(p.summary||'')}</p>
+      ${p.published?`<div class="when">Released ${esc(fmtDate(p.published))}</div>`:''}
+      <div class="mrow">${wstatBadge(p)}${autoPill(p)}</div>
+      <div class="foot">
+        <div class="tags">${(p.tags||[]).slice(0,3).map(t=>`<span class="pill">${esc(t)}</span>`).join('')}</div>
+        ${top?`<span class="reward">${esc(top)}</span>`:''}
+      </div>
+    </article>`;
+  }).join('');
+}
+function topReward(p){
+  const r=p.rewards||{}; return r.critical||r.high||r.medium||r.low||'';
+}
+
+/* ---------------- detail render ---------------- */
+function showList(){ $('list').style.display='block'; $('detail').classList.remove('on'); window.scrollTo(0,0); }
+function showDetail(id){
+  const p=(DATA.programs||[]).find(x=>x.id===id); if(!p) return;
+  $('list').style.display='none'; $('detail').classList.add('on'); window.scrollTo(0,0);
+  const r=p.rewards||{}, sub=p.submission||{}, src=p.source||{};
+  const rwOrder=[['critical','Critical'],['high','High'],['medium','Medium'],['low','Low']];
+  const rewardHtml = rwOrder.filter(([k])=>r[k]).map(([k,lbl])=>
+    `<div class="rw ${k}"><div class="lvl">${lbl}</div><div class="amt">${esc(r[k])}</div></div>`).join('');
+
+  const scopeTable = (rows,kind)=> !rows||!rows.length ? '<p class="muted" style="font-size:14px">None listed.</p>' :
+    `<table class="scope"><thead><tr><th>Asset</th><th>Type</th><th>Notes</th></tr></thead><tbody>${
+      rows.map(s=>`<tr><td class="a">${esc(s.asset||'')}</td><td>${esc(s.type||'')}</td><td>${esc(s.notes||'')}</td></tr>`).join('')
+    }</tbody></table>`;
+
+  const tmpl = (p.reportTemplate||[]).map(f=>{
+    const [t,h] = Array.isArray(f) ? f : [f, REPORT_HINTS[f.toLowerCase()]||''];
+    return `<li><b>${esc(t)}</b>${h?`<span class="hint">${esc(h)}</span>`:''}</li>`;
+  }).join('');
+
+  $('detailBody').innerHTML = `
+    <button class="back" onclick="showList()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m7-7-7 7 7 7"/></svg> All programs
+    </button>
+    <div class="dhead">
+      <div class="ttl">
+        <h1>${esc(p.name)}</h1>
+        <div class="org">${esc(p.org||'')}</div>
+      </div>
+      ${src.url?`<a class="srcbtn" href="${esc(src.url)}" target="_blank" rel="noopener noreferrer">
+        Open on ${esc(src.platform||'source')} <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M7 7h10v10"/></svg></a>`:''}
+    </div>
+    <div class="dmeta">
+      ${wstatBadge(p)}${autoPill(p)}
+      <span class="status ${esc(p.status||'active')}"><i></i>${esc(p.status||'active')}</span>
+      ${src.platform?`<span class="pill">Source: ${esc(src.platform)}</span>`:''}
+      ${p.type?`<span class="pill">${esc(p.type)}</span>`:''}
+      ${p.published?`<span class="pill">Released ${esc(fmtDate(p.published))}</span>`:''}
+      ${p.added?`<span class="pill">Added ${esc(p.added)}</span>`:''}
+      ${(p.tags||[]).map(t=>`<span class="pill">${esc(t)}</span>`).join('')}
+    </div>
+    ${p.summary?`<p class="summary">${esc(p.summary)}</p>`:''}
+
+    <section class="sec">
+      <h2><span class="ic">${IC.flag}</span>Progress &amp; execution</h2>
+      <dl class="kv">
+        <dt>My status</dt><dd>${esc(WLABEL[wstat(p)]||wstat(p))}</dd>
+        <dt>Auto-execute</dt><dd>${autoEligible(p)
+          ? 'Eligible — submits via email or a platform the agent is already authorised on. Agent may run this autonomously (one program at a time).'
+          : 'Manual — this channel/platform is not on your authorised list yet. Register it yourself, then tell the agent before it runs this.'}</dd>
+        ${sub.channel?`<dt>Channel</dt><dd>${esc(sub.channel)}</dd>`:''}
+        ${p.outcome?`<dt>Outcome</dt><dd>${esc(p.outcome)}</dd>`:''}
+        ${p.workNote?`<dt>Note</dt><dd>${esc(p.workNote)}</dd>`:''}
+        ${p.workUpdated?`<dt>Updated</dt><dd>${esc(fmtDate(p.workUpdated))}</dd>`:''}
+      </dl>
+    </section>
+
+    ${rewardHtml?`<section class="sec">
+      <h2><span class="ic">${IC.coin}</span>Rewards</h2>
+      <div class="rewardgrid">${rewardHtml}</div>
+      ${r.notes?`<p class="muted" style="font-size:13.5px;margin:14px 0 0">${esc(r.notes)}</p>`:''}
+    </section>`:''}
+
+    <section class="sec">
+      <h2><span class="ic">${IC.where}</span>Where this came from</h2>
+      <dl class="kv">
+        <dt>Platform</dt><dd>${esc(src.platform||'—')}</dd>
+        ${p.published?`<dt>Released</dt><dd>${esc(fmtDate(p.published))}</dd>`:''}
+        ${src.url?`<dt>Link</dt><dd><a href="${esc(src.url)}" target="_blank" rel="noopener noreferrer">${esc(src.url)}</a></dd>`:''}
+        ${src.discovered?`<dt>Discovered</dt><dd>${esc(src.discovered)}</dd>`:''}
+        ${src.policyUrl?`<dt>Policy page</dt><dd><a href="${esc(src.policyUrl)}" target="_blank" rel="noopener noreferrer">${esc(src.policyUrl)}</a></dd>`:''}
+      </dl>
+    </section>
+
+    <section class="sec">
+      <h2><span class="ic">${IC.target}</span>Scope</h2>
+      <div class="scopewrap"><h3><span class="dot in"></span>In scope</h3>${scopeTable((p.scope||{}).in,'in')}</div>
+      <div class="scopewrap"><h3><span class="dot out"></span>Out of scope</h3>${scopeTable((p.scope||{}).out,'out')}</div>
+    </section>
+
+    <section class="sec">
+      <h2><span class="ic">${IC.send}</span>How to submit</h2>
+      <dl class="kv">
+        ${sub.how?`<dt>Method</dt><dd>${esc(sub.how)}</dd>`:''}
+        ${sub.url?`<dt>Submit at</dt><dd><a href="${esc(sub.url)}" target="_blank" rel="noopener noreferrer">${esc(sub.url)}</a></dd>`:''}
+        ${sub.email?`<dt>Email</dt><dd><a href="mailto:${esc(sub.email)}">${esc(sub.email)}</a></dd>`:''}
+        ${sub.sla?`<dt>Response SLA</dt><dd>${esc(sub.sla)}</dd>`:''}
+        ${sub.language?`<dt>Language</dt><dd>${esc(sub.language)}</dd>`:''}
+      </dl>
+    </section>
+
+    ${tmpl?`<section class="sec">
+      <h2><span class="ic">${IC.doc}</span>What your report must contain</h2>
+      <ol class="steps">${tmpl}</ol>
+    </section>`:''}
+
+    ${p.policy?`<section class="sec">
+      <h2><span class="ic">${IC.shield}</span>Disclosure policy &amp; rules</h2>
+      <div class="policy">${esc(p.policy)}</div>
+      ${p.safeHarbor?`<div class="safeharbor">${IC.check2}<div>${esc(p.safeHarbor)}</div></div>`:''}
+    </section>`:''}
+  `;
+}
+
+/* ---------------- report-field default hints (HackerOne-style) ---------------- */
+const REPORT_HINTS = {
+  'title':'One-line summary — vuln type + affected asset (e.g. "Stored XSS in profile bio on app.example.com").',
+  'summary':'2–4 sentences: what the bug is and why it matters, in plain language.',
+  'vulnerability type':'Classification, e.g. CWE / OWASP category (SQLi, IDOR, SSRF…).',
+  'affected asset':'Exact URL, endpoint, parameter, host, or app version.',
+  'steps to reproduce':'Numbered, exact steps a triager can follow from scratch, including requests/payloads.',
+  'proof of concept':'Screenshots, request/response, video, or a minimal PoC. No destructive actions.',
+  'impact':'What an attacker can actually achieve, and under what preconditions.',
+  'severity':'Your rating with a CVSS 3.1/4.0 vector string to justify it.',
+  'remediation':'Suggested fix or mitigation.',
+  'supporting material':'Logs, HAR files, accounts used, attachments.'
+};
+
+/* ---------------- icons ---------------- */
+const IC = {
+  coin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M14.5 9a2.5 2 0 0 0-2.5-1.5c-1.4 0-2.5.7-2.5 1.8 0 2.7 5 1.3 5 4 0 1.1-1.1 1.9-2.5 1.9A2.6 2 0 0 1 9 13.8M12 6v1.5M12 16.5V18"/></svg>',
+  where:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.6-7-11a7 7 0 1 1 14 0c0 5.4-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3"/></svg>',
+  send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
+  doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 5 6v5c0 4.5 3 7.8 7 9 4-1.2 7-4.5 7-9V6Z"/></svg>',
+  check2:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m5 13 4 4L19 7"/></svg>',
+  flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22V4m0 1h12l-2 4 2 4H4"/></svg>'
+};
+
+/* ---------------- util ---------------- */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function progDate(p){ const d=Date.parse(p.published||p.added||''); return isNaN(d)?0:d; }
+function rewardVal(p){ const r=p.rewards||{}; const s=r.critical||r.high||r.medium||r.low||''; const n=parseInt(String(s).replace(/[^0-9]/g,''),10); return isNaN(n)?-1:n; }
+function fmtDate(s){ if(!s) return ''; const hasTime=/[T ]\d\d:/.test(String(s)); const d=new Date(s); if(isNaN(d)) return s;
+  const o={year:'numeric',month:'short',day:'numeric'}; if(hasTime){o.hour='2-digit';o.minute='2-digit';}
+  try{ return d.toLocaleString('en-GB',o); }catch(_){ return s; } }
+</script>
+<a id="toRadar" href="index.html" style="position:fixed;right:14px;bottom:14px;z-index:50;background:#2A2220;color:#E0D1D1;border:1px solid rgba(224,209,209,.3);border-radius:10px;padding:8px 12px;font:600 13px system-ui;text-decoration:none">⌖ Radar</a>
+</body>
+</html>

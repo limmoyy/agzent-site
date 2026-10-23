@@ -3,92 +3,83 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agzent — Bug Bounty Programs</title>
-<meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#2a2220">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='10' fill='%232a2220'/><path d='M9 23 16 9l7 14' stroke='%23E0D1D1' stroke-width='3.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/><circle cx='16' cy='18.5' r='2.8' fill='%23D9FF57'/></svg>">
+<meta name="robots" content="noindex, nofollow">
+<title>Bug Bounty Radar — Agzent</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%232A2220'/><circle cx='32' cy='32' r='20' fill='none' stroke='%23D9FF57' stroke-width='3' opacity='.5'/><circle cx='32' cy='32' r='10' fill='none' stroke='%23D9FF57' stroke-width='3' opacity='.8'/><path d='M32 32 L50 18' stroke='%23D9FF57' stroke-width='4' stroke-linecap='round'/><circle cx='44' cy='40' r='4' fill='%23E0D1D1'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --mocha:#7A6A66;--blush:#E0D1D1;
-  --cream:#F8F3F1;--paper:#FFFDFC;--espresso:#2A2220;--ink:#231B19;
+  --mocha:#7A6A66;--blush:#E0D1D1;--cream:#F8F3F1;--espresso:#2A2220;--ink:#1A1412;
   --lime:#D9FF57;--lime-ink:#1E2400;
-  --muted:#6E5F5B;--line:rgba(122,106,102,.24);
-  --ok:#1f7a3d;--warn:#9a6a00;--bad:#9a2a2a;
-  --r:22px;--max:1080px;
+  --bg:#17110F;--panel:#211917;--panel2:#2A2220;--line:rgba(224,209,209,.12);--line2:rgba(224,209,209,.22);
+  --text:#F3ECEA;--muted:#B5A6A2;--dim:#857571;
+  --ok:#7EE08A;--warn:#FFC857;--bad:#FF7A6B;--info:#8EC5FF;
+  --r:18px;--max:1240px;
   --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
   --body:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;
   --mono:"JetBrains Mono",ui-monospace,monospace;
   --ease:cubic-bezier(.2,.8,.2,1);
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;background:var(--cream);color:var(--ink);font:16px/1.6 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 var(--body);min-height:100vh;
+  background-image:radial-gradient(1200px 600px at 85% -10%,rgba(217,255,87,.07),transparent 60%),radial-gradient(900px 500px at -10% 10%,rgba(122,106,102,.18),transparent 60%)}
 a{color:inherit}
-svg{display:block}
-.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+button,input,select{font:inherit;color:inherit}
 h1,h2,h3{font-family:var(--display);letter-spacing:-.03em;line-height:1.05;margin:0}
-h1{font-size:clamp(30px,5vw,46px);font-weight:800}
-h2{font-size:22px;font-weight:700}
-h3{font-size:16px;font-weight:700;letter-spacing:-.01em}
 .mono{font-family:var(--mono)}
-.muted{color:var(--muted)}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
-/* ---------- lock gate ---------- */
-#gate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
-  background:radial-gradient(120% 120% at 50% -10%,#3a2f2c,#241c1a);padding:24px}
-#gate.hidden{display:none}
-.lock{width:100%;max-width:420px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);
-  padding:34px 30px;box-shadow:0 30px 80px -30px rgba(0,0,0,.6);text-align:center}
-.lock .mark{width:56px;height:56px;margin:0 auto 18px;border-radius:16px;background:var(--espresso);
-  display:flex;align-items:center;justify-content:center}
-.lock .mark svg{width:30px;height:30px}
-.lock h1{font-size:26px;margin-bottom:6px}
-.lock p{color:var(--muted);font-size:14px;margin:0 0 22px}
-.lock form{display:flex;flex-direction:column;gap:12px}
-.lock input{font:600 16px var(--body);padding:14px 16px;border:1.5px solid var(--line);border-radius:14px;
-  background:var(--cream);color:var(--ink);outline:none;transition:border .2s}
-.lock input:focus{border-color:var(--mocha)}
-.lock button{font:700 15px var(--body);padding:14px;border:0;border-radius:14px;background:var(--espresso);
-  color:var(--cream);cursor:pointer;transition:transform .2s var(--ease),opacity .2s}
-.lock button:hover{transform:translateY(-1px)}
-.lock button:disabled{opacity:.6;cursor:default;transform:none}
-.lock .err{color:var(--bad);font-size:13px;font-weight:600;min-height:18px;margin-top:2px}
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand b{font-family:var(--display);font-size:22px;letter-spacing:-.03em}
+.brand small{color:var(--muted);font-size:12px;border:1px solid var(--line2);border-radius:99px;padding:2px 8px}
+.top .meta{color:var(--muted);font-size:13px;text-align:right}
 
-/* ---------- top bar ---------- */
-#app{display:none}
-#app.on{display:block}
-.top{position:sticky;top:0;z-index:40;background:rgba(248,243,241,.82);backdrop-filter:blur(12px);
-  border-bottom:1px solid var(--line)}
-.top .wrap{display:flex;align-items:center;gap:14px;height:62px}
-.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font:800 18px var(--display);letter-spacing:-.04em}
-.brand .d{width:30px;height:30px;border-radius:9px;background:var(--espresso);display:flex;align-items:center;justify-content:center}
-.brand .d svg{width:18px;height:18px}
-.brand small{display:block;font:600 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:1px}
-.top .spacer{flex:1}
-.top .meta{font-size:12px;color:var(--muted);text-align:right}
-.lockbtn{font:600 13px var(--body);border:1px solid var(--line);background:var(--paper);border-radius:99px;
-  padding:7px 14px;cursor:pointer;color:var(--ink)}
-.lockbtn:hover{background:var(--blush)}
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:40px;align-items:center;padding:18px 0 26px}
+.radar{position:relative;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#1F2A10 0%,#161C0C 55%,#120E0C 72%);border:1px solid rgba(217,255,87,.25);overflow:hidden;box-shadow:0 0 0 8px rgba(217,255,87,.03),0 30px 80px -30px rgba(217,255,87,.25)}
+.radar .ring{position:absolute;border:1px solid rgba(217,255,87,.16);border-radius:50%;inset:var(--i)}
+.radar .cross{position:absolute;inset:0}
+.radar .cross::before,.radar .cross::after{content:"";position:absolute;background:rgba(217,255,87,.12)}
+.radar .cross::before{left:50%;top:0;bottom:0;width:1px}
+.radar .cross::after{top:50%;left:0;right:0;height:1px}
+.radar .sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,rgba(217,255,87,.45),rgba(217,255,87,.08) 40deg,transparent 70deg);animation:spin 5.5s linear infinite;opacity:.35;transition:opacity .4s}
+.radar.on .sweep{animation-duration:1.6s;opacity:1}
+@keyframes spin{to{transform:rotate(360deg)}}
+.blip{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:var(--dim);box-shadow:0 0 0 0 transparent;transition:background .3s}
+.blip[data-s=running]{background:var(--warn);animation:ping 1s infinite}
+.blip[data-s=ok]{background:var(--lime);box-shadow:0 0 12px var(--lime)}
+.blip[data-s=error]{background:var(--bad)}
+.blip i{position:absolute;left:14px;top:-4px;font:600 10px/1 var(--mono);color:var(--muted);white-space:nowrap;font-style:normal;pointer-events:none}
+.blip.l i{left:auto;right:14px}
+@keyframes ping{50%{box-shadow:0 0 0 8px rgba(255,200,87,.15)}}
+.radar .core{position:absolute;inset:50%;width:12px;height:12px;margin:-6px;border-radius:50%;background:var(--lime);box-shadow:0 0 18px var(--lime)}
 
-/* ---------- hero / search ---------- */
-.hero{padding:40px 0 10px}
-.hero .lead{color:var(--muted);max-width:60ch;margin:10px 0 0}
-.controls{display:flex;gap:10px;flex-wrap:wrap;margin:26px 0 8px}
-.search{flex:1;min-width:240px;position:relative}
-.search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;opacity:.5}
-.search input{width:100%;font:500 15px var(--body);padding:13px 14px 13px 42px;border:1.5px solid var(--line);
-  border-radius:14px;background:var(--paper);outline:none}
-.search input:focus{border-color:var(--mocha)}
-.filters{display:flex;gap:6px;flex-wrap:wrap}
-.chip{font:600 13px var(--body);padding:10px 15px;border-radius:99px;border:1px solid var(--line);
-  background:var(--paper);cursor:pointer;transition:all .2s}
-.chip.active{background:var(--espresso);color:var(--cream);border-color:var(--espresso)}
-.sortsel{font:600 13px var(--body);padding:10px 14px;border-radius:99px;border:1px solid var(--line);background:var(--paper);cursor:pointer;color:var(--ink);outline:none}
-.sortsel:focus{border-color:var(--mocha)}
+.hero h1{font-size:clamp(34px,5.2vw,62px);font-weight:800}
+.hero h1 em{font-style:normal;color:var(--lime)}
+.hero p.lede{color:var(--muted);max-width:620px;margin:14px 0 22px}
+.scanrow{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.scan{position:relative;border:0;cursor:pointer;background:var(--lime);color:var(--lime-ink);font:800 20px/1 var(--display);letter-spacing:.06em;padding:20px 38px;border-radius:99px;box-shadow:0 10px 40px -10px rgba(217,255,87,.6);transition:transform .2s var(--ease),box-shadow .2s}
+.scan:hover{transform:translateY(-2px);box-shadow:0 16px 50px -12px rgba(217,255,87,.75)}
+.scan:active{transform:translateY(1px)}
+.scan[disabled]{cursor:progress;background:#B7D84A}
+.scan .bar{position:absolute;left:16px;right:16px;bottom:7px;height:3px;border-radius:3px;background:rgba(30,36,0,.18);overflow:hidden;display:none}
+.scan .bar b{display:block;height:100%;width:0;background:var(--lime-ink);transition:width .4s}
+.scan[disabled] .bar{display:block}
+.scanhint{color:var(--muted);font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:24px;max-width:680px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.stat b{display:block;font:800 26px/1.1 var(--display);letter-spacing:-.02em}
+.stat span{color:var(--muted);font-size:12px}
+.stat.hl b{color:var(--lime)}
 
+<<<<<<< Updated upstream
 /* ---------- program grid ---------- */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin:22px 0 60px}
 .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:22px;cursor:pointer;
@@ -136,116 +127,190 @@ h3{font-size:16px;font-weight:700;letter-spacing:-.01em}
 .auth{font-size:13px;color:var(--muted);margin:12px 0 0;max-width:70ch}
 .auth b{color:var(--ink)}
 .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:60px 0}
+=======
+/* source strip */
+.strip{display:flex;gap:8px;overflow-x:auto;padding:4px 0 14px;scrollbar-width:thin}
+.chip{flex:none;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:6px 12px;font-size:12.5px;white-space:nowrap;cursor:pointer}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+.chip[data-s=running] .dot{background:var(--warn);animation:ping 1s infinite}
+.chip[data-s=ok] .dot{background:var(--ok)}
+.chip[data-s=error] .dot{background:var(--bad)}
+.chip .n{font-family:var(--mono);color:var(--muted)}
+>>>>>>> Stashed changes
 
-/* ---------- detail ---------- */
-.detail{display:none;padding:28px 0 80px}
-.detail.on{display:block}
-.back{display:inline-flex;align-items:center;gap:7px;font:600 14px var(--body);border:1px solid var(--line);
-  background:var(--paper);border-radius:99px;padding:8px 15px;cursor:pointer;margin-bottom:22px}
-.back:hover{background:var(--blush)}
-.dhead{display:flex;justify-content:space-between;align-items:start;gap:18px;flex-wrap:wrap;margin-bottom:6px}
-.dhead .ttl h1{margin-bottom:6px}
-.dhead .org{color:var(--muted);font-size:15px}
-.srcbtn{display:inline-flex;align-items:center;gap:8px;font:700 14px var(--body);background:var(--espresso);
-  color:var(--cream);text-decoration:none;padding:12px 18px;border-radius:99px;white-space:nowrap}
-.srcbtn:hover{opacity:.9}
-.dmeta{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 26px}
-.summary{font-size:17px;line-height:1.7;max-width:70ch;margin:0 0 30px}
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-top:6px;position:sticky;top:0;background:rgba(23,17,15,.92);backdrop-filter:blur(10px);z-index:5}
+.tabs{overflow-x:auto;scrollbar-width:none}
+.tab{white-space:nowrap;flex:none;border:0;background:none;padding:14px 16px;cursor:pointer;color:var(--muted);font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab[aria-selected=true]{color:var(--text);border-color:var(--lime)}
+.tab .n{font:600 11px var(--mono);background:var(--panel2);border-radius:99px;padding:2px 7px;margin-left:6px;color:var(--muted)}
+.panel{display:none;padding:18px 0 60px}
+.panel.on{display:block}
 
-.sec{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:24px 26px;margin-bottom:16px}
-.sec > h2{display:flex;align-items:center;gap:10px;margin-bottom:16px}
-.sec > h2 .ic{width:28px;height:28px;border-radius:8px;background:var(--cream);border:1px solid var(--line);
-  display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-.sec > h2 .ic svg{width:16px;height:16px}
+/* filters */
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.search{flex:1 1 260px;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:0 12px}
+.search input{flex:1;border:0;background:none;padding:11px 0;outline:none;min-width:0}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:3px}
+.seg button{border:0;background:none;padding:7px 11px;border-radius:9px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:600}
+.seg button[aria-pressed=true]{background:var(--lime);color:var(--lime-ink)}
+select{background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:9px 12px}
+.toggle{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none;border:1px solid var(--line2);border-radius:12px;padding:8px 11px;background:var(--panel)}
+.toggle input{accent-color:var(--lime)}
+.pchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.pchip{border:1px solid var(--line2);background:transparent;border-radius:99px;padding:5px 11px;font-size:12.5px;cursor:pointer;color:var(--muted)}
+.pchip[aria-pressed=true]{background:var(--blush);color:var(--espresso);border-color:var(--blush);font-weight:600}
+.pchip .n{font-family:var(--mono);opacity:.7;margin-left:4px}
+.count{color:var(--muted);font-size:13px;margin:0 0 12px}
 
-.rewardgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
-.rw{border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center;background:var(--cream)}
-.rw .lvl{font:700 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.rw .amt{font:700 20px var(--mono);margin-top:4px}
-.rw.critical{background:var(--lime);border-color:var(--lime)} .rw.critical .lvl,.rw.critical .amt{color:var(--lime-ink)}
+/* cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.card{position:relative;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;cursor:pointer;transition:transform .2s var(--ease),border-color .2s,background .2s;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card:hover{transform:translateY(-2px);border-color:var(--line2);background:#261d1b}
+.card:focus-visible{outline:2px solid var(--lime);outline-offset:2px}
+.card h3{font-size:18px;font-weight:700;letter-spacing:-.02em;overflow-wrap:anywhere}
+.card .org{color:var(--muted);font-size:13px;margin-top:-4px;overflow-wrap:anywhere}
+.badges{display:flex;flex-wrap:wrap;gap:5px}
+.b{font:600 11px/1 var(--mono);border-radius:6px;padding:4px 6px;background:var(--panel2);color:var(--blush);border:1px solid var(--line)}
+.b.plat{background:var(--blush);color:var(--espresso);border-color:var(--blush)}
+.b.new{background:var(--lime);color:var(--lime-ink);border-color:var(--lime)}
+.b.cl{background:#2B2140;color:#D6C8FF;border-color:#4A3A72}
+.b.bounty{color:var(--ok)} .b.vdp{color:var(--info)} .b.contest{color:var(--warn)}
+.b.warn{color:var(--warn)} .b.bad{color:var(--bad)}
+.row{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.row b{color:var(--text);font-weight:600}
+.reward{font:700 15px var(--display);color:var(--lime)}
+.empty{border:1px dashed var(--line2);border-radius:var(--r);padding:40px;text-align:center;color:var(--muted)}
+.more{display:block;margin:18px auto 0;border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:10px 20px;cursor:pointer}
 
-table.scope{width:100%;border-collapse:collapse;font-size:14px}
-table.scope th{text-align:left;font:700 12px var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
-  padding:8px 10px;border-bottom:1.5px solid var(--line)}
-table.scope td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
-table.scope td.a{font-family:var(--mono);font-size:13px;font-weight:600}
-table.scope tr:last-child td{border-bottom:0}
-.scopewrap h3{margin:4px 0 10px;display:flex;align-items:center;gap:7px}
-.scopewrap h3 .dot{width:9px;height:9px;border-radius:50%}
-.scopewrap h3 .dot.in{background:var(--ok)} .scopewrap h3 .dot.out{background:var(--bad)}
-.scopewrap + .scopewrap{margin-top:22px}
+/* signals */
+.sig{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
+.sig .src{font:600 12px var(--mono);color:var(--muted)}
+.sig .src b{display:block;color:var(--blush);font-weight:600}
+.sig a.t{text-decoration:none;font-weight:600;overflow-wrap:anywhere}
+.sig a.t:hover{text-decoration:underline}
+.sig p{margin:4px 0 0;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.hot{display:inline-block;font:700 10px var(--mono);background:var(--lime);color:var(--lime-ink);border-radius:5px;padding:2px 5px;margin-right:6px;vertical-align:2px}
 
-.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:12px}
-.steps li{counter-increment:s;position:relative;padding:14px 16px 14px 52px;background:var(--cream);
-  border:1px solid var(--line);border-radius:14px}
-.steps li::before{content:counter(s);position:absolute;left:14px;top:14px;width:26px;height:26px;border-radius:8px;
-  background:var(--espresso);color:var(--cream);font:700 13px var(--mono);display:flex;align-items:center;justify-content:center}
-.steps li b{font-family:var(--display);letter-spacing:-.01em}
-.steps li .hint{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+/* sources table */
+.note{background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--lime);border-radius:12px;padding:14px 16px;color:var(--muted);margin-bottom:16px;font-size:14px}
+.note b{color:var(--text)}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:left;color:var(--muted);font-weight:600;padding:10px 8px;border-bottom:1px solid var(--line2);white-space:nowrap}
+.tbl td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+.tblwrap{overflow-x:auto}
+.st{font:600 12px var(--mono)} .st.ok{color:var(--ok)} .st.error{color:var(--bad)} .st.running{color:var(--warn)}
 
-.kv{display:grid;grid-template-columns:auto 1fr;gap:10px 18px;font-size:14px}
-.kv dt{font-weight:700;color:var(--muted)}
-.kv dd{margin:0}
-.kv dd a{color:var(--mocha);font-weight:600;word-break:break-all}
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,7,6,.6);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .25s;z-index:20}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(720px,100%);background:var(--panel);border-left:1px solid var(--line2);transform:translateX(100%);transition:transform .3s var(--ease);z-index:21;overflow-y:auto;overscroll-behavior:contain}
+.drawer.on{transform:none}
+.dh{position:sticky;top:0;background:var(--panel);padding:18px 22px 14px;border-bottom:1px solid var(--line);z-index:1}
+.dh h2{font-size:28px;margin-top:8px;overflow-wrap:anywhere}
+.dh .org{color:var(--muted);margin-top:4px}
+.x{position:absolute;right:16px;top:14px;border:1px solid var(--line2);background:var(--panel2);border-radius:10px;width:36px;height:36px;cursor:pointer;font-size:18px}
+.db{padding:18px 22px 40px}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:18px}
+.fact{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.fact span{display:block;color:var(--muted);font-size:12px;margin-bottom:3px}
+.fact b{font-weight:600;overflow-wrap:anywhere}
+.fact small{display:block;color:var(--dim);font-size:12px;margin-top:4px;line-height:1.4}
+.sec{margin:22px 0 0}
+.sec h3{font-size:17px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sec h3 .k{font:600 11px var(--mono);color:var(--lime-ink);background:var(--lime);border-radius:5px;padding:2px 6px}
+.sec p{margin:0 0 8px;color:var(--muted);overflow-wrap:anywhere}
+.steps{margin:0;padding-left:20px}
+.steps li{margin:0 0 8px}
+.steps li::marker{font-family:var(--mono);color:var(--lime)}
+.fields{counter-reset:f;list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.fields li{counter-increment:f;display:flex;gap:10px;align-items:baseline;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.fields li::before{content:counter(f);font:600 12px var(--mono);color:var(--lime);min-width:16px}
+.fields small{color:var(--muted)}
+.scope{width:100%;border-collapse:collapse;font-size:13px}
+.scope td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+.scope td.a{font-family:var(--mono);font-size:12.5px;font-weight:600;width:45%}
+.scope td.t{color:var(--muted);white-space:nowrap}
+.flags{display:flex;flex-wrap:wrap;gap:6px}
+.refs{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.refs a{display:block;text-decoration:none;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+.refs a:hover{border-color:var(--line2)}
+.refs small{display:block;color:var(--dim);font-family:var(--mono);font-size:11.5px;overflow-wrap:anywhere}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);background:var(--panel2);border-radius:10px;padding:9px 14px;cursor:pointer;text-decoration:none;font-weight:600;font-size:14px}
+.btn.pri{background:var(--lime);color:var(--lime-ink);border-color:var(--lime)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);background:var(--blush);color:var(--espresso);font-weight:600;padding:12px 18px;border-radius:12px;opacity:0;transition:.3s var(--ease);z-index:30;max-width:calc(100% - 32px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.foot{color:var(--dim);font-size:12.5px;padding:20px 0 40px;border-top:1px solid var(--line)}
 
-.policy{font-size:14.5px;line-height:1.7;white-space:pre-wrap}
-.safeharbor{display:flex;gap:10px;align-items:start;background:rgba(31,122,61,.08);border:1px solid rgba(31,122,61,.25);
-  border-radius:14px;padding:14px 16px;margin-top:14px;font-size:13.5px}
-.safeharbor svg{width:18px;height:18px;flex:0 0 auto;margin-top:2px;color:var(--ok)}
+@media (max-width:860px){
+  .hero{grid-template-columns:1fr;gap:22px}
+  .radar{max-width:260px;margin:0 auto;width:100%}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .top .meta{display:none}
+  .tab .wide{display:none}
+}
+@media (max-width:560px){
+  .wrap{padding:0 16px}
+  .facts{grid-template-columns:1fr}
+  .sig{grid-template-columns:1fr;gap:4px}
+  .scan{width:100%}
+  .dh,.db{padding-left:16px;padding-right:16px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
-.foot-note{text-align:center;color:var(--muted);font-size:12.5px;padding:30px 0 50px}
-@media (max-width:560px){.sec{padding:20px 18px}.hero{padding:28px 0 6px}}
+/* gate */
+#gate{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(1000px 500px at 50% -10%,rgba(217,255,87,.09),transparent 60%),var(--bg)}
+body.on #gate{display:none}
+body:not(.on) .wrap,body:not(.on) .scrim,body:not(.on) .drawer{display:none}
+.gatebox{width:100%;max-width:390px;background:var(--panel);border:1px solid var(--line2);border-radius:20px;padding:32px 30px;text-align:center;box-shadow:0 40px 100px -40px rgba(0,0,0,.7)}
+.gatebox .gmark{font-size:42px;color:var(--lime);line-height:1;filter:drop-shadow(0 0 16px rgba(217,255,87,.5))}
+.gatebox h1{font-size:27px;margin:16px 0 6px}
+.gatebox p{color:var(--muted);font-size:14px;margin:0 0 20px}
+.gatebox input{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line2);background:var(--panel2);outline:none;margin-bottom:10px;color:var(--text)}
+.gatebox input:focus{border-color:var(--lime)}
+.gatebox button{width:100%;padding:14px;border:0;border-radius:12px;background:var(--lime);color:var(--lime-ink);font-weight:800;font-family:var(--display);letter-spacing:.05em;cursor:pointer}
+.gatebox button:disabled{opacity:.7;cursor:progress}
+.gerr{color:var(--bad);font-size:13px;min-height:18px;margin-top:10px}
+.gvault{display:inline-block;margin-top:16px;color:var(--muted);font-size:13px;text-decoration:none;border-bottom:1px solid var(--line2);padding-bottom:1px}
+.gvault:hover{color:var(--blush)}
+.brandico{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--panel2);border:1px solid var(--line2);color:var(--lime);font-size:17px}
+.toplinks{display:flex;align-items:center;gap:8px}
+.toplink{border:1px solid var(--line2);background:var(--panel);border-radius:9px;padding:6px 11px;font-size:12.5px;cursor:pointer;text-decoration:none;color:var(--muted)}
+.toplink:hover{color:var(--text);border-color:var(--line)}
 </style>
 </head>
 <body>
-
-<!-- ===================== LOCK GATE ===================== -->
 <div id="gate">
-  <div class="lock">
-    <div class="mark"><svg viewBox="0 0 32 32"><path d="M9 23 16 9l7 14" stroke="#E0D1D1" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="18.5" r="2.8" fill="#D9FF57"/></svg></div>
-    <h1>Agzent VDP Vault</h1>
-    <p>Private bug-bounty & disclosure program directory. Enter the passphrase to decrypt.</p>
-    <form id="gateForm" autocomplete="off">
-      <input id="pw" type="password" placeholder="Passphrase" autocomplete="current-password" autofocus>
-      <button id="go" type="submit">Unlock</button>
-      <div class="err" id="err"></div>
-    </form>
-  </div>
+  <form id="gateForm" class="gatebox" autocomplete="off">
+    <div class="gmark">⌖</div>
+    <h1>Bug Bounty Radar</h1>
+    <p>Private directory of the newest bug-bounty programs. Enter the passphrase — the snapshot is decrypted in your browser.</p>
+    <input id="pw" type="password" placeholder="Passphrase" autocomplete="current-password" autofocus>
+    <button id="gateBtn" type="submit">Unlock</button>
+    <div class="gerr" id="gerr"></div>
+    <a class="gvault" href="vault.html">→ Open the work vault instead</a>
+  </form>
 </div>
-
-<!-- ===================== APP ===================== -->
-<div id="app">
+<div class="wrap">
   <header class="top">
-    <div class="wrap">
-      <a class="brand" href="#" onclick="showList();return false">
-        <span class="d"><svg viewBox="0 0 32 32"><path d="M9 23 16 9l7 14" stroke="#E0D1D1" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="18.5" r="2.8" fill="#D9FF57"/></svg></span>
-        <span>Agzent<small>Bug Bounty</small></span>
-      </a>
-      <div class="spacer"></div>
-      <div class="meta" id="metaInfo"></div>
-      <button class="lockbtn" onclick="relock()">Lock</button>
-    </div>
+    <a class="brand" href="#" onclick="return false"><span class="brandico">⌖</span><b>BB Radar</b><small>Agzent</small></a>
+    <div class="toplinks"><span class="meta" id="topmeta"></span><a class="toplink" href="vault.html">Vault ↗</a><button class="toplink" id="lockBtn" type="button">Lock</button></div>
   </header>
 
-  <!-- LIST VIEW -->
-  <main id="list">
-    <section class="hero wrap">
-      <h1>Bug Bounty &amp; Disclosure Programs</h1>
-      <p class="lead">A private, curated directory of vulnerability disclosure and bug-bounty programs. Each entry records where it was sourced, its scope, how to submit a report, and exactly what a report needs to contain.</p>
-      <p class="auth" id="authLine"></p>
-      <div class="controls">
-        <div class="search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-          <input id="q" placeholder="Search programs, orgs, assets, tags…" oninput="render()">
-        </div>
-        <div class="filters" id="filters"></div>
-        <select class="sortsel" id="sort" onchange="render()" aria-label="Sort programs">
-          <option value="newest">Newest first</option>
-          <option value="oldest">Oldest first</option>
-          <option value="reward">Highest reward</option>
-          <option value="name">A–Z</option>
-        </select>
+  <section class="hero">
+    <div class="radar" id="radar" aria-hidden="true">
+      <div class="ring" style="--i:12%"></div><div class="ring" style="--i:25%"></div><div class="ring" style="--i:38%"></div>
+      <div class="cross"></div><div class="sweep"></div><div class="core"></div>
+    </div>
+    <div>
+      <h1>Every new bug bounty, <em>one scan.</em></h1>
+      <p class="lede">Pulls the live program lists from HackerOne, Bugcrowd, Intigriti, YesWeHack, Immunefi, Cantina, Sherlock, HackenProof, Bugbase, Code4rena, CodeHawks and ~2,000 self-hosted programs (disclose.io), plus Claude's deep scan of X/Twitter and blogs and social/news leads. Each program shows when it was released, how to submit and where every fact came from.</p>
+      <div class="scanrow">
+        <button class="scan" id="scanBtn"><span id="scanLabel">SCAN</span><span class="bar"><b id="scanBar"></b></span></button>
+        <div class="scanhint" id="scanHint">Decrypted in your browser · refreshes from the VPS.</div>
       </div>
+<<<<<<< Updated upstream
       <div class="filters wfilters" id="wfilters"></div>
       <div class="xbar">
         <button class="xcopy" onclick="copySkipList()">Salin daftar X</button>
@@ -255,30 +320,105 @@ table.scope tr:last-child td{border-bottom:0}
     </section>
     <section class="wrap"><div class="grid" id="grid"></div></section>
   </main>
+=======
+      <div class="stats">
+        <div class="stat hl"><b id="stNew">—</b><span>released last 7 days</span></div>
+        <div class="stat"><b id="stFresh">—</b><span>new since radar started</span></div>
+        <div class="stat"><b id="stLive">—</b><span>live programs tracked</span></div>
+        <div class="stat"><b id="stSrc">—</b><span>sources OK</span></div>
+      </div>
+    </div>
+  </section>
+>>>>>>> Stashed changes
 
-  <!-- DETAIL VIEW -->
-  <main id="detail" class="detail"><div class="wrap" id="detailBody"></div></main>
+  <div class="strip" id="strip" aria-label="Source status"></div>
 
-  <div class="foot-note wrap" id="footNote"></div>
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="programs" aria-selected="true">Programs <span class="n" id="nProg">0</span></button>
+    <button class="tab" role="tab" data-tab="signals" aria-selected="false">Leads<span class="wide"> · X/social/news</span> <span class="n" id="nSig">0</span></button>
+    <button class="tab" role="tab" data-tab="sources" aria-selected="false">Sources</button>
+  </nav>
+
+  <section class="panel on" id="tab-programs" role="tabpanel">
+    <div class="filters">
+      <label class="search"><span aria-hidden="true">⌕</span><span class="sr">Search</span><input id="q" type="search" placeholder="Search name, platform, tag, asset type…" autocomplete="off"></label>
+      <div class="seg" id="win" aria-label="Released within">
+        <button data-v="7">7d</button><button data-v="30" aria-pressed="true">30d</button><button data-v="90">90d</button><button data-v="0">All</button>
+      </div>
+      <div class="seg" id="type" aria-label="Type">
+        <button data-v="" aria-pressed="true">All</button><button data-v="bounty">Bounty</button><button data-v="vdp">VDP</button><button data-v="contest">Contest</button>
+      </div>
+      <select id="sort" aria-label="Sort">
+        <option value="rel">Newest release</option>
+        <option value="seen">Recently found by radar</option>
+        <option value="rew">Highest reward</option>
+        <option value="az">A–Z</option>
+      </select>
+      <label class="toggle"><input type="checkbox" id="onlyNew"> NEW only</label>
+      <label class="toggle"><input type="checkbox" id="onlyClaude"> Claude picks</label>
+      <label class="toggle"><input type="checkbox" id="showGone"> Paused / closed</label>
+    </div>
+    <div class="pchips" id="pchips"></div>
+    <p class="count" id="count"></p>
+    <div class="grid" id="list"></div>
+    <button class="more" id="more" hidden>Load more</button>
+  </section>
+
+  <section class="panel" id="tab-signals" role="tabpanel">
+    <div class="note"><b>Leads, not verified programs.</b> Posts and news that mention a bug bounty launch. X/Twitter has no free API and the public mirrors (Nitter, xcancel) are down, so X is covered by <b>Claude's deep scan</b>: it searches x.com posts, then checks every program on its official page before it lands in the Programs tab. Unverified X finds show up here as "Claude · X".</div>
+    <div class="filters">
+      <label class="search"><span aria-hidden="true">⌕</span><span class="sr">Search leads</span><input id="sq" type="search" placeholder="Search leads…" autocomplete="off"></label>
+      <label class="toggle"><input type="checkbox" id="hotOnly" checked> Launch keywords only</label>
+    </div>
+    <div class="pchips" id="schips"></div>
+    <div id="slist"></div>
+  </section>
+
+  <section class="panel" id="tab-sources" role="tabpanel">
+    <div class="note">The VPS scanner hits these sources every few hours; this page shows the latest encrypted snapshot it published. <b>Release dates</b> come from the platform's own field where one exists (HackerOne <span class="mono">launched_at</span>, Intigriti <span class="mono">createdAt</span>, Immunefi <span class="mono">launchDate</span>, …). Bugcrowd and YesWeHack don't publish one, so the radar estimates it from the history of <a href="https://github.com/arkadiyt/bounty-targets-data" target="_blank" rel="noopener noreferrer">bounty-targets-data</a> snapshots (marked <b>≈</b>) and from its own first-seen date. Scope comes from the same dataset where the platform API doesn't include it.</div>
+    <div class="tblwrap"><table class="tbl" id="srcTbl"></table></div>
+  </section>
+
+  <footer class="foot">Data is cached from public listings — always confirm scope, rewards and rules on the program's own page before testing. Only test what a program explicitly puts in scope.</footer>
 </div>
 
-<script>
-/* ---------------- crypto: AES-GCM + PBKDF2 ---------------- */
-const enc = new TextEncoder(), dec = new TextDecoder();
-const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" role="dialog" aria-label="Program details"></aside>
+<div class="toast" id="toast" role="status"></div>
 
-async function deriveKey(pw, salt, iters){
-  const base = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey(
-    {name:'PBKDF2', salt, iterations:iters, hash:'SHA-256'},
-    base, {name:'AES-GCM', length:256}, false, ['decrypt']);
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const safeHref = u => /^(https?:|mailto:)/i.test(String(u || '')) ? esc(u) : '#';
+const host = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+const DAY = 864e5;
+const fmtDate = s => s ? new Date(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+const ago = s => { if (!s) return ''; const d = (Date.now() - Date.parse(s)) / DAY; if (d < 0) return -d < 1 ? 'in ' + Math.max(1, Math.round(-d * 24)) + 'h' : 'in ' + Math.round(-d) + 'd'; if (d < 1 / 24) return 'just now'; if (d < 1) return Math.round(d * 24) + 'h ago'; if (d < 60) return Math.round(d) + 'd ago'; return Math.round(d / 30) + 'mo ago'; };
+const money = (v, cur) => { if (v == null) return ''; const c = (cur || 'USD').toUpperCase(); const sym = { USD: '$', EUR: '€', GBP: '£', USDC: '$' }[c]; return (sym || '') + Number(v).toLocaleString('en-US', { maximumFractionDigits: 0 }) + (sym ? '' : ' ' + c); };
+const rewardOf = it => it.max ? (it.min && it.min !== it.max ? money(it.min, it.cur) + ' – ' : 'up to ') + money(it.max, it.cur) : (it.t === 'vdp' ? 'No bounty' : (it.rt || ''));
+const short = (s, n = 48) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s || '');
+const TYPE = { bounty: 'Bounty', vdp: 'VDP', contest: 'Contest' };
+const CH = { email: '✉ Email', platform: '⌘ Platform', 'web-form': '☐ Web form', other: '↗ Policy page' };
+let ST = { items: [], signals: [], meta: null, win: 30, type: '', plats: new Set(), splats: new Set(), shown: 60 };
+let SNAP = null, PW = '';
+try { const s = JSON.parse(localStorage.getItem('bbr.f') || '{}'); if (s.win != null) ST.win = s.win; if (s.type != null) ST.type = s.type; if (s.sort) $('#sort').value = s.sort; } catch { }
+const saveF = () => { try { localStorage.setItem('bbr.f', JSON.stringify({ win: ST.win, type: ST.type, sort: $('#sort').value })); } catch { } };
+function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 3500); }
+
+// ---- gate: AES-GCM + PBKDF2, same scheme as the vault ----
+const te = new TextEncoder(), td = new TextDecoder();
+const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function deriveKey(pw, salt, iters) {
+  const base = await crypto.subtle.importKey('raw', te.encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iters, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
 }
-async function decryptPayload(pw, pkg){
-  const salt = b64d(pkg.salt), iv = b64d(pkg.iv), ct = b64d(pkg.ct);
-  const key = await deriveKey(pw, salt, pkg.iter || 200000);
-  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, ct);
-  return JSON.parse(dec.decode(pt));
+async function decryptSnap(pw) {
+  const pkg = await (await fetch('radar.enc.json?_=' + Date.now(), { cache: 'no-store' })).json();
+  const key = await deriveKey(pw, b64d(pkg.salt), pkg.iter || 200000);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(pkg.iv) }, key, b64d(pkg.ct));
+  return JSON.parse(td.decode(pt));
 }
+<<<<<<< Updated upstream
 
 /* ---------------- state ---------------- */
 let DATA = null, activeTag = 'all', activeWork = 'all';
@@ -400,35 +540,227 @@ function autoEligible(p){
   const auth=((DATA&&DATA.authorizedPlatforms)||[]).map(x=>String(x).toLowerCase()).filter(Boolean);
   const plat=String((p.source&&p.source.platform)||sub.platform||'').toLowerCase();
   return auth.some(a=>plat.includes(a));
+=======
+function applySnap(s) { SNAP = s; ST.items = s.items || []; ST.signals = s.signals || []; ST.meta = s.meta || {}; renderMeta(); renderChips(); renderList(); renderSChips(); renderSignals(); renderSources(); }
+async function unlock(pw) {
+  const s = await decryptSnap(pw); PW = pw; document.body.classList.add('on'); applySnap(s);
+  const m = location.hash.match(/^#p=(.+)$/); if (m) openDetail(decodeURIComponent(m[1]));
+>>>>>>> Stashed changes
 }
-function autoPill(p){ const on=autoEligible(p); return `<span class="auto ${on?'on':'off'}" title="${on?'Agent may auto-execute':'Register platform first, then tell the agent'}">${on?'⚡ Auto':'✋ Manual'}</span>`; }
-
-/* ---------------- gate ---------------- */
-$('gateForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const pw = $('pw').value, btn = $('go'), err = $('err');
-  if(!pw) return;
-  btn.disabled = true; btn.textContent = 'Decrypting…'; err.textContent='';
-  try{
-    const pkg = await (await fetch('programs.enc.json?_=' + Date.now(), {cache:'no-store'})).json();
-    DATA = await decryptPayload(pw, pkg);
-    try{ sessionStorage.setItem('agz_bb_pw', pw); }catch(_){}
-    boot();
-  }catch(ex){
-    err.textContent = 'Wrong passphrase, or no data published yet.';
-    btn.disabled = false; btn.textContent = 'Unlock';
-  }
+$('#gateForm').addEventListener('submit', async e => {
+  e.preventDefault(); const pw = $('#pw').value; const btn = $('#gateBtn'); const err = $('#gerr');
+  btn.disabled = true; btn.textContent = 'Decrypting…'; err.textContent = '';
+  try { await unlock(pw); try { sessionStorage.setItem('agz_bb_pw', pw); } catch (_) { } }
+  catch (_) { err.textContent = 'Wrong passphrase, or the snapshot could not be read.'; btn.disabled = false; btn.textContent = 'Unlock'; }
 });
-// auto-unlock within a session
+function relock() { try { sessionStorage.removeItem('agz_bb_pw'); } catch (_) { } location.reload(); }
+$('#lockBtn').addEventListener('click', relock);
+
+// ---- meta / radar visual ----
+function renderMeta() {
+  const m = ST.meta || {}, last = m.last, srcs = m.sources || [];
+  const prog = last?.progress || {};
+  const okN = srcs.filter(x => prog[x.id]?.state === 'ok').length;
+  $('#scanLabel').textContent = 'REFRESH';
+  $('#scanHint').textContent = last ? `Snapshot ${fmtDate(SNAP.generatedAt)} · VPS scan ${ago(last.finishedAt)} · auto every ${m.autoHours || 6}h` : `Snapshot ${fmtDate(SNAP?.generatedAt)}`;
+  $('#topmeta').textContent = SNAP ? `Snapshot ${fmtDate(SNAP.generatedAt)}` : '';
+  $('#stLive').textContent = (m.totals?.live ?? ST.items.length).toLocaleString();
+  $('#stFresh').textContent = (m.totals?.fresh7 ?? 0).toLocaleString();
+  $('#stSrc').textContent = `${okN}/${srcs.length}`;
+  const radar = $('#radar');
+  radar.querySelectorAll('.blip').forEach(b => b.remove());
+  srcs.forEach((x, i) => {
+    const a = (i / srcs.length) * Math.PI * 2 - Math.PI / 2, r = 30 + (i % 3) * 7;
+    const b = document.createElement('span'); b.className = 'blip' + (Math.cos(a) < -0.2 ? ' l' : '');
+    b.style.left = (50 + Math.cos(a) * r) + '%'; b.style.top = (50 + Math.sin(a) * r) + '%';
+    b.dataset.s = prog[x.id]?.state || 'ok'; b.title = x.name;
+    radar.appendChild(b);
+  });
+  $('#strip').innerHTML = srcs.map(x => { const p = prog[x.id] || {}; return `<button class="chip" data-s="${esc(p.state || 'idle')}" data-src="${esc(x.id)}" title="${esc(p.error || x.provides)}"><span class="dot"></span>${esc(x.name)}<span class="n">${p.state === 'ok' ? p.count : p.state === 'error' ? 'err' : ''}</span></button>`; }).join('');
+}
+$('#strip').addEventListener('click', e => { if (e.target.closest('.chip')) selectTab('sources'); });
+$('#scanBtn').addEventListener('click', async () => {
+  if (!PW) return;
+  const btn = $('#scanBtn'); btn.disabled = true; $('#scanLabel').textContent = 'REFRESHING'; $('#radar').classList.add('on');
+  try { applySnap(await decryptSnap(PW)); toast('Snapshot refreshed — ' + fmtDate(SNAP.generatedAt)); }
+  catch (e) { toast('Refresh failed: ' + e.message); }
+  finally { btn.disabled = false; $('#scanLabel').textContent = 'REFRESH'; setTimeout(() => $('#radar').classList.remove('on'), 1000); }
+});
+
+// ---- programs ----
+const dateOf = it => it.r || (it.nw ? it.fs : null);
+function filtered() {
+  const q = $('#q').value.trim().toLowerCase();
+  const onlyNew = $('#onlyNew').checked, onlyCl = $('#onlyClaude').checked, showGone = $('#showGone').checked;
+  const cut = ST.win ? Date.now() - ST.win * DAY : 0;
+  return ST.items.filter(it => {
+    if (!showGone && (it.g || ['paused', 'ended'].includes(it.s))) return false;
+    if (ST.type && it.t !== ST.type) return false;
+    if (ST.plats.size && !ST.plats.has(it.p)) return false;
+    if (onlyNew && !it.nw) return false;
+    if (onlyCl && !it.cl) return false;
+    if (cut) { const d = dateOf(it); if (!d || Date.parse(d) < cut) return false; }
+    if (q && !`${it.n} ${it.o} ${it.p} ${(it.tg || []).join(' ')} ${it.ch}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+function sorted(list) {
+  const s = $('#sort').value;
+  const k = { rel: it => Date.parse(dateOf(it) || 0) || 0, seen: it => Date.parse(it.fs) || 0, rew: it => it.max || 0 }[s];
+  return s === 'az' ? list.sort((a, b) => a.n.localeCompare(b.n)) : list.sort((a, b) => k(b) - k(a) || a.n.localeCompare(b.n));
+}
+function renderChips() {
+  const counts = {};
+  ST.items.forEach(it => { if (!it.g) counts[it.p] = (counts[it.p] || 0) + 1; });
+  $('#pchips').innerHTML = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([p, n]) => `<button class="pchip" data-p="${esc(p)}" aria-pressed="${ST.plats.has(p)}">${esc(p)}<span class="n">${n}</span></button>`).join('');
+  const cutoff = Date.now() - 7 * DAY;
+  $('#stNew').textContent = ST.items.filter(it => !it.g && it.r && Date.parse(it.r) > cutoff && Date.parse(it.r) <= Date.now() + DAY).length;
+}
+function card(it) {
+  const d = dateOf(it);
+  return `<button class="card" data-uid="${esc(it.uid)}">
+    <div class="badges"><span class="b plat">${esc(it.p)}</span><span class="b ${esc(it.t)}">${esc(TYPE[it.t] || it.t)}</span>${it.nw && Date.now() - Date.parse(it.fs) < 7 * DAY ? '<span class="b new">NEW</span>' : ''}${it.cl ? '<span class="b cl">Claude</span>' : ''}${it.s === 'paused' ? '<span class="b warn">paused</span>' : ''}${it.s === 'upcoming' ? '<span class="b warn">upcoming</span>' : ''}${it.g ? '<span class="b bad">gone</span>' : ''}</div>
+    <h3>${esc(it.n)}</h3>
+    ${it.o ? `<div class="org">${esc(it.o)}</div>` : ''}
+    <div class="reward">${esc(short(rewardOf(it)) || 'See program for rewards')}</div>
+    <div class="row"><span>${it.r ? `Released <b>${it.ra ? '≈ ' : ''}${esc(fmtDate(it.r))}</b>` : `First seen <b>${esc(fmtDate(it.fs))}</b>`}</span><span>${esc(ago(d))}</span></div>
+    <div class="row"><span>${esc(CH[it.ch] || '')}</span><span>${it.sc ? it.sc + ' in-scope asset' + (it.sc > 1 ? 's' : '') : ''}${it.e ? ' · ends ' + esc(fmtDate(it.e)) : ''}</span></div>
+  </button>`;
+}
+function renderList() {
+  const list = sorted(filtered());
+  $('#nProg').textContent = list.length;
+  $('#count').textContent = `${list.length.toLocaleString()} program${list.length === 1 ? '' : 's'}${ST.win ? ` released in the last ${ST.win} days` : ''}${ST.plats.size ? ' · ' + [...ST.plats].join(', ') : ''}. This mirror holds the newest programs; widen to “All” to see every one in the snapshot.`;
+  $('#list').innerHTML = list.length ? list.slice(0, ST.shown).map(card).join('') : `<div class="empty">${ST.items.length ? 'Nothing matches these filters — try a wider window or “All”.' : 'Snapshot empty.'}</div>`;
+  $('#more').hidden = list.length <= ST.shown;
+}
+const seg = (id, key) => $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; $(id).querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); ST[key] = key === 'win' ? +b.dataset.v : b.dataset.v; ST.shown = 60; saveF(); renderList(); });
+seg('#win', 'win'); seg('#type', 'type');
+document.querySelectorAll('#win button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.v === ST.win));
+document.querySelectorAll('#type button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === ST.type));
+$('#pchips').addEventListener('click', e => { const b = e.target.closest('.pchip'); if (!b) return; const p = b.dataset.p; ST.plats.has(p) ? ST.plats.delete(p) : ST.plats.add(p); b.setAttribute('aria-pressed', ST.plats.has(p)); ST.shown = 60; renderList(); });
+['#q', '#sort', '#onlyNew', '#onlyClaude', '#showGone'].forEach(id => $(id).addEventListener(id === '#q' ? 'input' : 'change', () => { ST.shown = 60; saveF(); renderList(); }));
+$('#more').addEventListener('click', () => { ST.shown += 60; renderList(); });
+$('#list').addEventListener('click', e => { const c = e.target.closest('.card'); if (c) openDetail(c.dataset.uid); });
+
+// ---- detail drawer ----
+let lastFocus = null;
+function openDetail(uid) {
+  lastFocus = document.activeElement;
+  const dr = $('#drawer');
+  const d = SNAP?.detail?.[uid];
+  if (!d) { const it = ST.items.find(x => x.uid === uid); dr.innerHTML = it ? `<div class="dh"><button class="x" aria-label="Close">×</button><h2>${esc(it.n)}</h2></div><div class="db"><p>Full detail isn't in this snapshot. Open the program page for scope and rules.</p><div class="acts"><a class="btn pri" href="${safeHref(it.url)}" target="_blank" rel="noopener noreferrer">Open program ↗</a></div></div>` : '<div class="db">Not found.</div>'; showDrawer(true); dr.querySelector('.x')?.focus(); return; }
+  dr.innerHTML = detail(d); showDrawer(true); dr.querySelector('.x').focus(); history.replaceState(null, '', '#p=' + encodeURIComponent(uid));
+}
+function showDrawer(on) { $('#drawer').classList.toggle('on', on); $('#scrim').classList.toggle('on', on); $('#drawer').setAttribute('aria-hidden', !on); document.body.style.overflow = on ? 'hidden' : ''; if (!on) { history.replaceState(null, '', location.pathname); lastFocus?.focus?.(); } }
+$('#scrim').addEventListener('click', () => showDrawer(false));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#drawer').classList.contains('on')) showDrawer(false); });
+const scopeRows = rows => `<table class="scope">${rows.slice(0, 80).map(r => `<tr><td class="a">${esc(r.asset)}</td><td class="t">${esc(r.type || '')}</td><td>${esc(r.notes || '')}</td></tr>`).join('')}</table>${rows.length > 80 ? `<p>+ ${rows.length - 80} more — see the program page.</p>` : ''}`;
+function flagList(d) {
+  const f = d.flags || {}, out = [];
+  if (f.kyc) out.push(['KYC required for payout', 'warn']); if (f.inviteOnly) out.push(['Invite only', 'warn']);
+  if (f.idv) out.push(['ID verification', 'warn']); if (f.applicationRequired) out.push(['Application required', 'warn']);
+  if (f.termsAcceptanceRequired) out.push(['Accept T&C first', '']); if (f.twoFactorRequired) out.push(['2FA required', '']);
+  if (f.goldStandardSafeHarbor) out.push(['Gold Standard safe harbor', 'bounty']); if (f.safeHarbor) out.push(['Safe harbor: ' + f.safeHarbor, f.safeHarbor === 'full' ? 'bounty' : '']);
+  if (f.disclosureAllowed === true) out.push(['Disclosure allowed', '']); if (f.managed) out.push(['Managed / triaged', '']);
+  if (f.triaged) out.push(['Triage active', '']); if (f.triagedByHackenproof) out.push(['Triaged by HackenProof', '']);
+  (f.features || []).forEach(x => out.push([x, /pay to/i.test(x) ? 'warn' : '']));
+  if (f.pocRequired?.length) out.push(['PoC required: ' + f.pocRequired.join(', '), 'warn']);
+  if (f.pgpKey) out.push(['PGP key available', '']); if (f.firstResponseDays != null) out.push(['First response ≈ ' + f.firstResponseDays + 'd', '']);
+  if (f.resolvedReports != null) out.push([f.resolvedReports + ' reports resolved', '']);
+  if (f.foundVia) out.push(['Found via: ' + f.foundVia, '']);
+  return out;
+}
+function detail(d) {
+  const reward = rewardOf({ min: d.rewardMin, max: d.rewardMax, cur: d.currency, t: d.type, rt: d.rewardText });
+  const sub = d.submission || {};
+  const steps = [
+    `Read the policy and scope first: <a href="${safeHref(d.policyUrl || d.url)}" target="_blank" rel="noopener noreferrer">${esc(host(d.policyUrl || d.url))}</a>. It overrides anything cached here.`,
+    esc(sub.how || ''),
+    sub.email ? `Send to <a href="mailto:${esc(sub.email)}">${esc(sub.email)}</a>.` : sub.url ? `Submit at <a href="${safeHref(sub.url)}" target="_blank" rel="noopener noreferrer">${esc(sub.url)}</a>.` : '',
+  ].filter(Boolean);
+  const flags = flagList(d);
+  const refs = [...(d.refs || []), ...((d.claude?.refs) || []).map(r => ({ ...r, label: 'Claude · ' + r.label }))].filter(r => r && (r.url || r.label));
+  return `<div class="dh">
+      <button class="x" aria-label="Close">×</button>
+      <div class="badges"><span class="b plat">${esc(d.platform)}</span><span class="b ${esc(d.type)}">${esc(TYPE[d.type] || d.type)}</span><span class="b">${esc(d.status)}</span>${d.isNew ? '<span class="b new">NEW</span>' : ''}${d.claude || d.via ? '<span class="b cl">Claude</span>' : ''}${d.gone ? '<span class="b bad">no longer listed</span>' : ''}</div>
+      <h2>${esc(d.name)}</h2>${d.org && d.org !== d.name ? `<div class="org">${esc(d.org)}</div>` : ''}
+    </div>
+    <div class="db">
+      ${d.summary ? `<p style="color:var(--muted);margin-top:0">${esc(d.summary)}</p>` : ''}
+      <div class="facts">
+        <div class="fact"><span>Released</span><b>${d.released ? (d.releasedApprox ? '≈ ' : '') + esc(fmtDate(d.released)) : 'Not published'}</b><small>${esc(d.releasedNote || '')}</small></div>
+        <div class="fact"><span>First seen by radar</span><b>${esc(fmtDate(d.firstSeen))}</b><small>via ${esc(d.sourceName || d.source)}${d.isNew ? ' — appeared after the radar\'s first sweep of this source' : ' — baseline sweep'}</small></div>
+        <div class="fact"><span>Rewards</span><b>${esc(reward || '—')}</b>${d.rewardText && d.rewardText !== reward ? `<small>${esc(d.rewardText)}</small>` : ''}</div>
+        <div class="fact"><span>Submit via</span><b>${esc(CH[sub.channel] || sub.channel || '—')}</b>${d.endsAt ? `<small>Ends ${esc(fmtDate(d.endsAt))}</small>` : d.updated ? `<small>Program updated ${esc(fmtDate(d.updated))}</small>` : ''}</div>
+      </div>
+      <div class="acts">
+        <a class="btn pri" href="${safeHref(d.url)}" target="_blank" rel="noopener noreferrer">Open program ↗</a>
+        ${sub.email ? `<a class="btn" href="mailto:${esc(sub.email)}">✉ ${esc(sub.email)}</a>` : ''}
+        <button class="btn" data-vault="${esc(d.uid)}">Copy as vault JSON</button>
+      </div>
+      <div class="sec"><h3><span class="k">1</span> How to submit</h3><ol class="steps">${steps.map(s => `<li>${s}</li>`).join('')}</ol></div>
+      <div class="sec"><h3><span class="k">2</span> What the report needs</h3>
+        ${d.reportStandard ? `<p>Standard ${esc(d.platform)} report form${d.platformDocs ? ` (<a href="${safeHref(d.platformDocs.url)}" target="_blank" rel="noopener noreferrer">${esc(d.platformDocs.label)}</a>)` : ''}. The program page can ask for more — check it.</p>` : '<p>Fields this program asks for.</p>'}
+        <ol class="fields">${(d.report || []).map(f => Array.isArray(f) ? `<li><span><b>${esc(f[0])}</b>${f[1] ? ` <small>— ${esc(f[1])}</small>` : ''}</span></li>` : `<li><b>${esc(f)}</b></li>`).join('')}</ol>
+      </div>
+      <div class="sec"><h3><span class="k">3</span> Scope</h3>
+        ${d.scopeIn?.length ? `<p><b style="color:var(--ok)">In scope</b> (${d.scopeIn.length})</p>${scopeRows(d.scopeIn)}` : '<p>No asset list in the public data — read the scope on the program page.</p>'}
+        ${d.scopeOut?.length ? `<p style="margin-top:14px"><b style="color:var(--bad)">Out of scope</b> (${d.scopeOut.length})</p>${scopeRows(d.scopeOut)}` : ''}
+      </div>
+      ${flags.length ? `<div class="sec"><h3><span class="k">4</span> Rules & requirements</h3><div class="flags">${flags.map(([t, c]) => `<span class="b ${c}">${esc(t)}</span>`).join('')}</div>${d.flags?.impacts?.length ? `<p style="margin-top:12px">Impacts in scope:</p><ul style="margin:0;padding-left:18px;color:var(--muted);font-size:13px">${d.flags.impacts.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}</div>` : ''}
+      ${d.claude ? `<div class="sec"><h3><span class="k">C</span> Claude's notes</h3><p>${esc(d.claude.foundVia ? 'Found via ' + d.claude.foundVia + '. ' : '')}${esc(d.claude.releasedNote || '')}</p></div>` : ''}
+      <div class="sec"><h3><span class="k">S</span> Sources</h3><ul class="refs">${refs.map(r => r.url ? `<li><a href="${safeHref(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.label)}<small>${esc(r.url)}</small></a></li>` : `<li><a>${esc(r.label)}</a></li>`).join('')}</ul></div>
+    </div>`;
+}
+function vaultEntry(d) {
+  const day = s => s ? String(s).slice(0, 10) : '';
+  const range = d.rewardMax ? `${d.rewardMin ? d.rewardMin.toLocaleString('en-US') + '–' : 'up to '}${d.rewardMax.toLocaleString('en-US')} ${d.currency || ''}`.trim() : '';
+  return { id: d.uid.replace(/[:/]+/g, '-'), name: d.name, org: d.org, status: d.status === 'paused' ? 'paused' : 'active', type: d.type === 'vdp' ? 'VDP' : d.type === 'contest' ? 'Contest' : 'Bug Bounty', workStatus: 'new', published: day(d.released), added: day(new Date().toISOString()), tags: d.tags || [], source: { platform: d.platform, url: d.url, policyUrl: d.policyUrl || d.url, discovered: `BB Radar scan (${d.sourceName}) — first seen ${day(d.firstSeen)}. ${d.releasedNote || ''}`.trim() }, summary: d.summary || '', rewards: { notes: [range, d.rewardText].filter(Boolean).join(' · ') + ' — confirm on the source page.' }, scope: { in: d.scopeIn || [], out: d.scopeOut || [] }, submission: { channel: d.submission?.channel || 'platform', how: d.submission?.how || '', url: d.submission?.url || d.url, email: d.submission?.email || '', sla: '', language: 'English' }, reportTemplate: d.report || [], policy: 'Read the program policy on the source page before testing; it overrides anything cached here.', safeHarbor: d.flags?.goldStandardSafeHarbor ? 'HackerOne Gold Standard Safe Harbor.' : d.flags?.safeHarbor ? `Safe harbor: ${d.flags.safeHarbor}.` : '' };
+}
+$('#drawer').addEventListener('click', async e => {
+  if (e.target.closest('.x')) return showDrawer(false);
+  const b = e.target.closest('[data-vault]'); if (!b) return;
+  const d = SNAP?.detail?.[b.dataset.vault]; if (!d) return;
+  try { await navigator.clipboard.writeText(JSON.stringify(vaultEntry(d), null, 2)); toast('Vault entry copied — paste it into your vault programs.json.'); }
+  catch (err) { toast('Copy failed: ' + err.message); }
+});
+
+// ---- signals ----
+function renderSChips() {
+  const c = {}; ST.signals.forEach(s => c[s.source] = (c[s.source] || 0) + 1);
+  $('#schips').innerHTML = Object.entries(c).sort((a, b) => b[1] - a[1]).map(([p, n]) => `<button class="pchip" data-p="${esc(p)}" aria-pressed="${ST.splats.has(p)}">${esc(p)}<span class="n">${n}</span></button>`).join('');
+}
+function renderSignals() {
+  const q = $('#sq').value.trim().toLowerCase(), hot = $('#hotOnly').checked;
+  const list = ST.signals.filter(s => (!hot || s.hot || /^Claude/.test(s.source)) && (!ST.splats.size || ST.splats.has(s.source)) && (!q || `${s.title} ${s.text} ${s.author}`.toLowerCase().includes(q)));
+  $('#nSig').textContent = list.length;
+  $('#slist').innerHTML = list.length ? list.slice(0, 300).map(s => `<div class="sig"><div class="src"><b>${esc(s.source)}</b>${esc(fmtDate(s.date))}<br>${esc(s.author || '')}</div><div>${s.hot ? '<span class="hot">LAUNCH?</span>' : ''}<a class="t" href="${safeHref(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title || s.url)}</a>${s.text ? `<p>${esc(s.text)}</p>` : ''}<p>${esc(host(s.url))}${s.discussion ? ` · <a href="${safeHref(s.discussion)}" target="_blank" rel="noopener noreferrer">discussion</a>` : ''}</p></div></div>`).join('') : '<div class="empty">No leads match. Untick “Launch keywords only” to see everything.</div>';
+}
+$('#schips').addEventListener('click', e => { const b = e.target.closest('.pchip'); if (!b) return; const p = b.dataset.p; ST.splats.has(p) ? ST.splats.delete(p) : ST.splats.add(p); b.setAttribute('aria-pressed', ST.splats.has(p)); renderSignals(); });
+$('#sq').addEventListener('input', renderSignals); $('#hotOnly').addEventListener('change', renderSignals);
+
+// ---- sources tab ----
+function renderSources() {
+  const m = ST.meta; if (!m) return; const last = m.last, prog = last?.progress || {};
+  $('#srcTbl').innerHTML = `<tr><th>Source</th><th>Kind</th><th>Last VPS result</th><th>What it gives</th><th>Release date from</th></tr>` + (m.sources || []).map(x => {
+    const p = prog[x.id] || {};
+    return `<tr><td><a href="${safeHref(x.endpoint)}" target="_blank" rel="noopener noreferrer"><b>${esc(x.name)}</b></a></td><td>${esc(x.kind)}</td><td><span class="st ${esc(p.state || '')}">${esc(p.state || '—')}</span>${p.state === 'ok' ? ` · ${p.count} items${p.fresh ? `, <b style="color:var(--lime)">${p.fresh} new</b>` : ''}` : ''}${p.error ? `<br><small style="color:var(--bad)">${esc(p.error)}</small>` : ''}</td><td>${esc(x.provides)}</td><td>${esc(x.dates)}</td></tr>`;
+  }).join('');
+}
+
+// ---- tabs ----
+function selectTab(t) { document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === t)); document.querySelectorAll('.panel').forEach(p => p.classList.toggle('on', p.id === 'tab-' + t)); }
+document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) selectTab(b.dataset.tab); });
+
+// ---- boot: auto-unlock within the session ----
 (async () => {
-  let pw=''; try{ pw = sessionStorage.getItem('agz_bb_pw') || ''; }catch(_){}
-  if(!pw) return;
-  try{
-    const pkg = await (await fetch('programs.enc.json?_=' + Date.now(), {cache:'no-store'})).json();
-    DATA = await decryptPayload(pw, pkg); boot();
-  }catch(_){ try{ sessionStorage.removeItem('agz_bb_pw'); }catch(e){} }
+  let pw = ''; try { pw = sessionStorage.getItem('agz_bb_pw') || ''; } catch (_) { }
+  if (pw) { try { await unlock(pw); return; } catch (_) { try { sessionStorage.removeItem('agz_bb_pw'); } catch (e) { } } }
+  $('#pw')?.focus();
 })();
 
+<<<<<<< Updated upstream
 function relock(){ try{ sessionStorage.removeItem('agz_bb_pw'); }catch(_){} location.reload(); }
 
 function boot(){
@@ -646,6 +978,8 @@ function rewardVal(p){ const r=p.rewards||{}; const s=r.critical||r.high||r.medi
 function fmtDate(s){ if(!s) return ''; const hasTime=/[T ]\d\d:/.test(String(s)); const d=new Date(s); if(isNaN(d)) return s;
   const o={year:'numeric',month:'short',day:'numeric'}; if(hasTime){o.hour='2-digit';o.minute='2-digit';}
   try{ return d.toLocaleString('en-GB',o); }catch(_){ return s; } }
+=======
+>>>>>>> Stashed changes
 </script>
 </body>
 </html>
