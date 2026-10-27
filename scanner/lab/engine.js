@@ -10,7 +10,7 @@
 //   - on the bar a limit fills, take-profit is checked against the close (the high may have come first)
 //   - optional partial take-profit (tp1): fraction closed at tp1 (maker), stop moves to break-even next bar
 
-export const TF_MIN = { '5m': 5, '15m': 15, '30m': 30, '1h': 60, '4h': 240 };
+export const TF_MIN = { '1m': 1, '5m': 5, '15m': 15, '30m': 30, '1h': 60, '4h': 240 };
 export const COSTS = { fee_t: 0.0005, fee_m: 0.0002, slip: 0.0001 };
 
 import { nanArr, isn, dayOf, ema, rma, sma, rollStd, rollMedian, rollMean, highest, lowest, atr, rsi, bbands, vwapSession, nyOffset } from './ind.js';

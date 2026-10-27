@@ -2,11 +2,12 @@
 // reachable from Indonesia where Binance/Bybit/OKX time out). Binance symbols map 1:1 (BTCUSDT → BTC_USDT);
 // 1000PEPEUSDT maps to PEPE_USDT with prices × 1000 so levels match the Binance-based scanner.
 // Gate serves at most the latest 10 000 candles per interval, 2000 per request.
-export const TF_SEC = { '5m': 300, '15m': 900, '30m': 1800, '1h': 3600, '4h': 14400 };
+export const TF_SEC = { '1m': 60, '5m': 300, '15m': 900, '30m': 1800, '1h': 3600, '4h': 14400 };
 const API = 'https://api.gateio.ws/api/v4/futures/usdt/candlesticks';
 const cache = new Map();
 
 export function gateContract(sym) {
+  if (sym.includes('_')) return { contract: sym, mult: 1 }; // already a Gate contract, e.g. index_XAU_USDT
   let base = sym.replace(/USDT$/, ''), mult = 1;
   const m = base.match(/^(1000+)(.+)$/);
   if (m) { mult = +m[1]; base = m[2]; }
@@ -51,8 +52,14 @@ export async function candles(sym, tf = '1h', bars = 2000, ttl = 60e3) {
   const chunks = [];
   if (n <= 2000) chunks.push(`${API}?contract=${contract}&interval=${tf}&limit=${n}`);
   else for (let f = now - n * sec; f < now; f += 1999 * sec) chunks.push(`${API}?contract=${contract}&interval=${tf}&from=${f}&to=${Math.min(now, f + 1999 * sec)}`);
-  const rows = new Map();
-  for (const u of chunks) for (const k of await getJson(u)) rows.set(+k.t, k);
+  // index_/mark_ candles have holes and refuse windows from before their history starts: walk back from now and
+  // stop at the first refusal, so the series stays gap-free
+  const tolerant = /^(index|mark)_/.test(contract), rows = new Map();
+  for (const u of tolerant ? [...chunks].reverse() : chunks) {
+    let d; try { d = await getJson(u, tolerant ? 0 : 3); } catch (e) { if (!tolerant) throw e; break; }
+    for (const k of d) rows.set(+k.t, k);
+  }
+  if (!rows.size && tolerant) for (const k of await getJson(`${API}?contract=${contract}&interval=${tf}&limit=${Math.min(n, 2000)}`)) rows.set(+k.t, k);
   const list = [...rows.values()].sort((a, b) => a.t - b.t);
   const data = { sym, tf, t: [], o: [], h: [], l: [], c: [], v: [] };
   for (const k of list) {

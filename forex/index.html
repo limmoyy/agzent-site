@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.gateio.ws; base-uri 'none'">
+<title>Forex Desk — Agzent</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%232A2220'/><path d='M10 46 L24 30 L34 38 L54 16' fill='none' stroke='%23D9FF57' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blush:#E0D1D1;--espresso:#2A2220;
+  --lime:#D9FF57;--lime-ink:#1E2400;
+  --bg:#17110F;--panel:#211917;--panel2:#2A2220;--line:rgba(224,209,209,.12);--line2:rgba(224,209,209,.22);
+  --text:#F3ECEA;--muted:#B5A6A2;--dim:#857571;
+  --ok:#7EE08A;--warn:#FFC857;--bad:#FF7A6B;--info:#8EC5FF;
+  --r:16px;--max:1300px;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 var(--body);min-height:100vh;
+  background-image:radial-gradient(1100px 560px at 85% -10%,rgba(217,255,87,.06),transparent 60%),radial-gradient(900px 500px at -10% 8%,rgba(122,106,102,.16),transparent 60%)}
+a{color:inherit}
+button,input,select{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--display);letter-spacing:-.03em;line-height:1.05;margin:0}
+h2.sec{font-size:19px;margin:0 0 10px}
+.mono{font-family:var(--mono)}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.muted{color:var(--muted)} .dim{color:var(--dim)}
+
+/* gate */
+#gate{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(1000px 500px at 50% -10%,rgba(217,255,87,.09),transparent 60%),var(--bg)}
+body.on #gate{display:none}
+body:not(.on) .main{display:none}
+.gatebox{width:100%;max-width:390px;background:var(--panel);border:1px solid var(--line2);border-radius:20px;padding:32px 30px;text-align:center;box-shadow:0 40px 100px -40px rgba(0,0,0,.7)}
+.gatebox .gmark{font-size:40px;line-height:1}
+.gatebox h1{font-size:26px;margin:14px 0 6px}
+.gatebox p{color:var(--muted);font-size:14px;margin:0 0 20px}
+.gatebox input{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line2);background:var(--panel2);outline:none;margin-bottom:10px;color:var(--text)}
+.gatebox input:focus{border-color:var(--lime)}
+.gatebox button{width:100%;padding:14px;border:0;border-radius:12px;background:var(--lime);color:var(--lime-ink);font-weight:800;font-family:var(--display);letter-spacing:.05em;cursor:pointer}
+.gatebox button:disabled{opacity:.7;cursor:progress}
+.gerr{color:var(--bad);font-size:13px;min-height:18px;margin-top:10px}
+.gvault{display:inline-block;margin-top:16px;color:var(--muted);font-size:13px;text-decoration:none;border-bottom:1px solid var(--line2);padding-bottom:1px}
+
+/* top */
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brandico{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--panel2);border:1px solid var(--line2);color:var(--lime);font-size:16px}
+.brand b{font-family:var(--display);font-size:21px}
+.brand small{color:var(--muted);font-size:12px;border:1px solid var(--line2);border-radius:99px;padding:2px 8px}
+.toplinks{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.toplink{border:1px solid var(--line2);background:var(--panel);border-radius:9px;padding:6px 11px;font-size:12.5px;cursor:pointer;text-decoration:none;color:var(--muted)}
+.toplink:hover{color:var(--text);border-color:var(--line)}
+.sitenav{display:inline-flex;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:3px;gap:2px}
+.sitenav a{padding:6px 14px;border-radius:9px;text-decoration:none;color:var(--muted);font-weight:700;font-size:13px}
+.sitenav a:hover{color:var(--text)}
+.sitenav a[aria-current=page]{background:var(--lime);color:var(--lime-ink)}
+
+h1.title{font-size:clamp(28px,4.5vw,46px);font-weight:800;margin:6px 0 4px}
+h1.title em{font-style:normal;color:var(--lime)}
+.sub{color:var(--muted);max-width:760px;margin:0 0 16px}
+.warn-banner{background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--warn);border-radius:12px;padding:12px 16px;color:var(--muted);font-size:13.5px;margin:0 0 18px}
+.warn-banner b{color:var(--text)}
+
+/* tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;position:sticky;top:0;z-index:20;padding:8px 0;background:linear-gradient(var(--bg) 80%,transparent)}
+.tab{border:1px solid var(--line2);background:var(--panel);border-radius:11px;padding:9px 15px;cursor:pointer;color:var(--muted);font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:7px}
+.tab:hover{color:var(--text)}
+.tab[aria-selected=true]{background:var(--lime);color:var(--lime-ink);border-color:var(--lime)}
+.tab .spark{font-size:13px}
+.pane{display:none} .pane.on{display:block}
+
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 18px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:118px}
+.stat b{display:block;font:800 20px/1.1 var(--display)}
+.stat span{color:var(--muted);font-size:12px}
+.stat.good b{color:var(--ok)} .stat.badv b{color:var(--bad)} .stat.warnv b{color:var(--warn)}
+
+.sessions{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin:0 0 22px}
+.scard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.scard h3{font-size:15px;font-weight:700;margin-bottom:6px;overflow-wrap:anywhere}
+.scard .pnl{font:800 24px/1 var(--display);margin:6px 0}
+.scard .pnl.up{color:var(--ok)} .scard .pnl.down{color:var(--bad)}
+.scard .meta{color:var(--muted);font-size:12px;line-height:1.5}
+.scard .mono{font-size:11.5px;color:var(--dim)}
+
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
+.search{flex:1 1 240px;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:0 12px}
+.search input{flex:1;border:0;background:none;padding:10px 0;outline:none;min-width:0}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:3px;flex-wrap:wrap}
+.seg button{border:0;background:none;padding:7px 10px;border-radius:9px;cursor:pointer;color:var(--muted);font-size:12.5px;font-weight:600}
+.seg button[aria-pressed=true]{background:var(--lime);color:var(--lime-ink)}
+
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+table.tk{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
+table.tk.sm{min-width:640px}
+table.tk th{position:sticky;top:0;background:var(--panel2);text-align:right;color:var(--muted);font-weight:600;padding:10px 10px;white-space:nowrap;cursor:pointer;user-select:none;border-bottom:1px solid var(--line2)}
+table.tk th.l{text-align:left}
+table.tk th[aria-sort] .ar{color:var(--lime)}
+table.tk td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+table.tk td.l{text-align:left}
+table.tk tbody tr{cursor:pointer}
+table.tk tr:hover td{background:rgba(224,209,209,.035)}
+.sym{font-family:var(--mono);font-weight:600}
+.pill{display:inline-block;font:600 11px/1 var(--mono);border-radius:6px;padding:4px 7px;background:var(--panel2);border:1px solid var(--line)}
+.st-open,.st-position{color:var(--lime)} .st-signal,.st-pending{color:var(--warn)} .st-idle,.st-none{color:var(--dim)}
+.side-1{color:var(--ok)} .side--1{color:var(--bad)} .side-0{color:var(--dim)}
+.pos{color:var(--ok)} .neg{color:var(--bad)}
+.strat{color:var(--blush);font-family:var(--mono);font-size:11.5px}
+.t-strong{font-weight:700}
+.foot{color:var(--dim);font-size:12.5px;padding:18px 0 40px;border-top:1px solid var(--line);margin-top:22px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);background:var(--blush);color:var(--espresso);font-weight:600;padding:12px 18px;border-radius:12px;opacity:0;transition:.3s var(--ease);z-index:30;max-width:calc(100% - 32px);pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* panels & forms */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.card + .card{margin-top:14px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px;align-items:start}
+.grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:0 0 14px}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld > span{font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+.fld input,.fld select{background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;outline:none;min-width:0;color:var(--text)}
+.fld input:focus,.fld select:focus{border-color:var(--lime)}
+.fld input[type=number]{width:110px}
+.fld.sm input[type=number]{width:84px}
+.fld.chk{flex-direction:row;align-items:center;gap:7px;padding-bottom:8px}
+.btn{border:1px solid var(--line2);background:var(--panel2);border-radius:11px;padding:9px 15px;cursor:pointer;color:var(--text);font-weight:600;font-size:14px;white-space:nowrap}
+.btn:hover{border-color:var(--blush)}
+.btn.pri{background:var(--lime);color:var(--lime-ink);border-color:var(--lime);font-family:var(--display);font-weight:800;letter-spacing:.02em}
+.btn.pri:hover{filter:brightness(1.05)}
+.btn:disabled{opacity:.55;cursor:progress}
+.btn.sm{padding:5px 10px;font-size:12.5px;border-radius:9px}
+a.btn{display:inline-block;text-decoration:none}
+.btn.ask{color:var(--lime);border-color:rgba(217,255,87,.45)}
+.params{display:flex;flex-wrap:wrap;gap:8px 10px;margin:4px 0 0}
+details.more{margin-top:10px}
+details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
+.prog{height:6px;background:var(--panel2);border-radius:99px;overflow:hidden;margin:10px 0 0;display:none}
+.prog.on{display:block}
+.prog i{display:block;height:100%;width:0;background:var(--lime);transition:width .25s var(--ease)}
+.note{font-size:12.5px;color:var(--dim);margin:8px 0 0}
+.err{color:var(--bad);font-size:13px}
+.empty{color:var(--muted);padding:22px;text-align:center;border:1px dashed var(--line2);border-radius:14px}
+
+/* claude */
+.hero{display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:linear-gradient(135deg,rgba(217,255,87,.09),rgba(122,106,102,.12));border:1px solid var(--line2);border-radius:20px;padding:20px 22px;margin:0 0 16px}
+.hero h2{font-size:24px;margin:0 0 4px}
+.hero p{margin:0;color:var(--muted);font-size:14px;max-width:640px}
+.claude-badge{display:inline-flex;align-items:center;gap:6px;font:700 11px/1 var(--mono);color:var(--lime);border:1px solid rgba(217,255,87,.4);border-radius:99px;padding:5px 9px;margin-bottom:8px;letter-spacing:.04em}
+.setup{background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:14px 15px;display:flex;flex-direction:column;gap:8px}
+.setup.position{border-color:rgba(217,255,87,.5)}
+.setup .hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.setup .hd b{font:800 19px/1 var(--display)}
+.score{font:800 13px/1 var(--mono);padding:6px 8px;border-radius:9px;background:var(--panel2);border:1px solid var(--line2)}
+.score.hi{color:var(--lime-ink);background:var(--lime);border-color:var(--lime)}
+.lv{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;font-size:13px;font-family:var(--mono)}
+.lv .k{color:var(--muted);font-family:var(--body);font-size:12px}
+.lv .p{text-align:right}
+.lv .d{text-align:right;color:var(--dim);font-size:11.5px}
+.lv .tp{color:var(--ok)} .lv .slc{color:var(--bad)} .lv .en{color:var(--lime)}
+.say{font-size:13px;color:var(--muted);margin:0;line-height:1.5}
+.say li{margin:0 0 3px}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:2px 8px}
+.setup.forming{border-style:dashed}
+.setup.tier-arming{border-color:rgba(217,255,87,.6);border-style:solid;box-shadow:0 0 0 1px rgba(217,255,87,.15) inset}
+.tfp{font-size:10.5px;padding:3px 6px;color:var(--info);border-color:rgba(142,197,255,.35);vertical-align:middle}
+.st-arming{color:var(--lime);border-color:rgba(217,255,87,.45)} .st-sweeping{color:var(--warn)} .st-near{color:var(--info)}
+.chk{display:grid;grid-template-columns:auto 1fr auto auto;gap:3px 9px;font-size:12.5px;align-items:center}
+.chk .ck{width:18px;height:18px;border-radius:6px;display:inline-grid;place-items:center;background:var(--panel2);color:var(--dim);font-weight:800;font-size:11px}
+.chk .ck.ok{background:rgba(126,224,138,.18);color:var(--ok)}
+.chk .mono{font-size:11.5px;text-align:right}
+.formhd{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:flex-start}
+.cdbig{display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:12px}
+.cdbig b{font:800 26px/1 var(--mono);color:var(--lime)}
+.cdwrap.due b{color:var(--warn)}
+@media (max-width:560px){ .cdbig{align-items:flex-start} }
+.mkt{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.research{font-size:13.5px;color:var(--muted)}
+.research b{color:var(--text)}
+.research table{border-collapse:collapse;font-size:12.5px;margin:8px 0;font-family:var(--mono)}
+.research td,.research th{padding:5px 10px;border-bottom:1px solid var(--line);text-align:right}
+.research td:first-child,.research th:first-child{text-align:left;font-family:var(--body)}
+
+/* chart */
+.chart-legend{position:absolute;left:10px;top:8px;z-index:3;font:12px var(--mono);color:var(--muted);pointer-events:none;text-shadow:0 1px 2px #000}
+.chart-legend b{color:var(--text)}
+.lg-o{margin-left:8px}
+.box-label{font:600 11px var(--mono);color:var(--text);background:rgba(23,17,15,.75);padding:2px 6px;border-radius:5px;white-space:nowrap}
+.chartbox{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+.calc{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:13px}
+.calc span:nth-child(even){font-family:var(--mono);text-align:right}
+.legend-row{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:8px 2px 0}
+.legend-row i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+
+@media (max-width:900px){ .grid2{grid-template-columns:1fr} }
+@media (max-width:560px){ .wrap{padding:0 16px} .hero{padding:16px} .tab{padding:8px 11px;font-size:13px} .fld input[type=number]{width:92px} }
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* forex */
+.clock{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
+.phase{font:800 13px/1 var(--mono);padding:8px 11px;border-radius:10px;border:1px solid var(--line2);letter-spacing:.04em}
+.phase.open{color:var(--lime-ink);background:var(--lime);border-color:var(--lime)}
+.phase.break{color:var(--warn)} .phase.weekend{color:var(--dim)}
+.events{display:flex;gap:8px;flex-wrap:wrap}
+.ev{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:7px 11px;font-size:12.5px;min-width:150px}
+.ev b{display:block;font:700 13px/1.3 var(--body);color:var(--text)}
+.ev .mono{color:var(--lime);font-size:12px}
+.inst{display:flex;flex-direction:column;gap:12px}
+.inst .ihd{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.inst .ihd h3{font-size:22px}
+.inst .ihd small{color:var(--muted);font-size:12px;display:block;margin-top:3px}
+.big{font:800 26px/1 var(--mono);font-variant-numeric:tabular-nums}
+.state{border:1px solid var(--line2);border-radius:14px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;background:var(--panel2)}
+.state.sig{border-color:rgba(255,200,87,.6)} .state.pos{border-color:rgba(217,255,87,.6)}
+.state .sh{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.lvls{display:grid;grid-template-columns:auto 1fr 1fr auto;gap:3px 12px;font-size:12.5px;font-variant-numeric:tabular-nums}
+.lvls .h{color:var(--dim);font-size:11px;font-weight:600}
+.lvls .r{text-align:right;font-family:var(--mono)}
+.offset{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.playbook{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.playbook .pb{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;font-size:13px;color:var(--muted)}
+.playbook .pb b{display:block;color:var(--text);font-size:14px;margin-bottom:3px}
+.tfnote{font-size:12px;color:var(--muted)}
+.tfnote b{color:var(--text)}
+</style>
+</head>
+<body>
+<div id="gate">
+  <form id="gateForm" class="gatebox" autocomplete="off">
+    <div class="gmark">🥇</div>
+    <h1>Forex Desk</h1>
+    <p>XAUUSD and NAS100 tools. Same passphrase as the scanner — it is checked in your browser.</p>
+    <input id="pw" type="password" placeholder="Passphrase" autocomplete="current-password" autofocus>
+    <button id="gateBtn" type="submit">Unlock</button>
+    <div class="gerr" id="gerr"></div>
+    <a class="gvault" href="/scanner/">→ Crypto scanner instead</a>
+  </form>
+</div>
+
+<div class="main">
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#desk"><span class="brandico">🥇</span><b>Forex Desk</b><small>Agzent</small></a>
+    <nav class="sitenav" aria-label="Markets"><a href="/scanner/">Crypto</a><a href="/forex/" aria-current="page">Forex</a></nav>
+    <div class="toplinks"><span class="toplink" id="nowClock">—</span><a class="toplink" href="/bugbounty/">Bug Bounty ↗</a><button class="toplink" id="lockBtn" type="button">Lock</button></div>
+  </header>
+
+  <h1 class="title">Forex <em>Desk</em></h1>
+  <p class="sub">Gold (XAUUSD) and Nasdaq 100 (NAS100) on 1m, 5m and 15m: market clock, the session levels traders watch, Claude's trend-pullback rule with entry / stop / target and lot size, TradingView-style charts and backtests. Prices are Gate.io index candles — the underlying gold and Nasdaq-100 price — so your broker's quote can sit a little off; type your broker's price to shift every level.</p>
+  <div class="warn-banner"><b>Experimental — no proven edge.</b> Claude tested ~170 intraday setups on gold and Nasdaq and found none that beats costs on its own. The trend pullback shown here made money only when the market trended; it lost nothing much otherwise, but it holds trades for hours. Paper-trade it first.</div>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="desk" aria-selected="true"><span class="spark">✦</span>Claude FX</button>
+    <button class="tab" role="tab" data-tab="chart" aria-selected="false">Chart</button>
+    <button class="tab" role="tab" data-tab="backtest" aria-selected="false">Backtest</button>
+  </nav>
+
+  <!-- DESK -->
+  <section class="pane on" id="pane-desk">
+    <div class="card" id="clockCard"></div>
+    <div class="hero" style="margin-top:14px">
+      <div>
+        <div class="claude-badge">✦ CLAUDE FX · TREND PULLBACK</div>
+        <h2>Gold &amp; Nasdaq right now</h2>
+        <p>Trade with the trend, enter on the dip: long when price is above EMA 100 and RSI 14 dips under 40, short when it is below EMA 100 and RSI rises over 60. Target 1 %, stop 1.5 %, out after 24 h. 5m is the timeframe it was researched on.</p>
+      </div>
+      <div class="ctrls" style="margin:0">
+        <div class="fld"><span>Timeframe</span><div class="seg" id="tfSeg" role="group" aria-label="Timeframe"><button type="button" data-v="1m" aria-pressed="false">1m</button><button type="button" data-v="5m" aria-pressed="true">5m</button><button type="button" data-v="15m" aria-pressed="false">15m</button></div></div>
+        <button class="btn pri" id="scanBtn" type="button">✦ Refresh desk</button>
+      </div>
+    </div>
+    <div class="ctrls">
+      <label class="fld"><span>Capital ($)</span><input id="cap" type="number" min="10" step="10" value="1000"></label>
+      <label class="fld"><span>Risk per trade (%)</span><input id="risk" type="number" min="0.1" step="0.1" value="1"></label>
+      <label class="fld chk"><input type="checkbox" id="auto" checked><span>Auto refresh at every candle close (while open)</span></label>
+    </div>
+    <p class="tfnote" id="tfNote"></p>
+    <div class="prog" id="prog"><i></i></div>
+    <div class="grid3" id="instCards" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))"><div class="empty">Loading gold and Nasdaq…</div></div>
+    <div class="card" style="margin-top:16px"><h2 class="sec">How to play it (WIB times)</h2><div class="playbook" id="playbook"></div></div>
+    <details class="more card" id="research" style="margin-top:16px">
+      <summary><b>What Claude tested — and why there is no "great" FX strategy here yet</b></summary>
+      <div class="research" id="researchBody"></div>
+    </details>
+  </section>
+
+  <!-- CHART -->
+  <section class="pane" id="pane-chart">
+    <div class="ctrls">
+      <label class="fld"><span>Instrument</span><select id="chInst"><option value="XAUUSD">XAUUSD · Gold</option><option value="NAS100">NAS100 · Nasdaq 100</option></select></label>
+      <label class="fld"><span>Timeframe</span><select id="chTf"><option>1m</option><option selected>5m</option><option>15m</option><option>1h</option></select></label>
+      <label class="fld"><span>Strategy overlay</span><select id="chOv"></select></label>
+      <label class="fld chk"><input type="checkbox" id="chLv" checked><span>Session levels</span></label>
+      <button class="btn" id="chLoad" type="button">Reload</button>
+      <a class="btn" id="chTv" href="#" target="_blank" rel="noopener">Open in TradingView ↗</a>
+    </div>
+    <div class="grid2">
+      <div><div class="chartbox" id="chBox"></div>
+        <div class="legend-row"><span><i style="background:#8EC5FF"></i>EMA 20</span><span><i style="background:#FFC857"></i>EMA 50</span><span><i style="background:#E0D1D1"></i>EMA 100</span><span><i style="background:#B98CFF"></i>Asian range</span><span><i style="background:#FF9F5A"></i>Previous day</span><span><i style="background:#7FD7E8"></i>NY opening range</span></div>
+        <p class="note">Index prices, WIB time, closed-market candles removed. Your broker's chart can differ by a little — the Desk's broker-price box shifts levels for you.</p></div>
+      <div><div class="card" id="chSide"><div class="muted">Loading…</div></div><div class="card" id="chTrades"></div></div>
+    </div>
+  </section>
+
+  <!-- BACKTEST -->
+  <section class="pane" id="pane-backtest">
+    <div class="card">
+      <div class="ctrls">
+        <label class="fld"><span>Instrument</span><select id="btInst"><option value="both">Both</option><option value="XAUUSD">XAUUSD</option><option value="NAS100">NAS100</option></select></label>
+        <label class="fld"><span>Timeframe</span><select id="btTf"><option>1m</option><option selected>5m</option><option>15m</option></select></label>
+        <label class="fld" style="min-width:260px"><span>Strategy</span><select id="btStrat"></select></label>
+        <button class="btn pri" id="btRun" type="button">Run backtest</button>
+        <button class="btn" id="btCompare" type="button">Compare all strategies</button>
+      </div>
+      <p class="note" id="btNote" style="margin:0 0 8px"></p>
+      <div class="params" id="btParams"></div>
+      <div class="ctrls" style="margin-top:12px">
+        <label class="fld sm"><span>XAU spread ($)</span><input id="spX" type="number" step="0.01" value="0.25"></label>
+        <label class="fld sm"><span>XAU comm. ($/lot)</span><input id="cmX" type="number" step="0.5" value="7"></label>
+        <label class="fld sm"><span>NAS spread (pt)</span><input id="spN" type="number" step="0.1" value="1.5"></label>
+        <label class="fld sm"><span>Slippage (bp)</span><input id="slip" type="number" step="0.05" value="0.25"></label>
+      </div>
+      <p class="note">Gate keeps the latest 10 000 index candles: 1m ≈ 7 days, 5m ≈ 35 days, 15m ≈ 40 days. The research used 6–10 months from Binance archives; see the Claude FX tab.</p>
+      <div class="prog" id="btProg"><i></i></div>
+    </div>
+    <div id="btOut" style="margin-top:14px"></div>
+  </section>
+
+  <div class="foot">Gold and Nasdaq-100 index prices from Gate.io (public API) · charts by TradingView Lightweight Charts · everything runs in your browser · research only, not financial advice.</div>
+</div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="../scanner/vendor/lightweight-charts.standalone.production.js"></script>
+<script type="module" src="app.js?v=20261027a"></script>
+</body>
+</html>

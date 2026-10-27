@@ -60,6 +60,10 @@ body:not(.on) .main{display:none}
 .toplinks{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .toplink{border:1px solid var(--line2);background:var(--panel);border-radius:9px;padding:6px 11px;font-size:12.5px;cursor:pointer;text-decoration:none;color:var(--muted)}
 .toplink:hover{color:var(--text);border-color:var(--line)}
+.sitenav{display:inline-flex;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:3px;gap:2px}
+.sitenav a{padding:6px 14px;border-radius:9px;text-decoration:none;color:var(--muted);font-weight:700;font-size:13px}
+.sitenav a:hover{color:var(--text)}
+.sitenav a[aria-current=page]{background:var(--lime);color:var(--lime-ink)}
 
 h1.title{font-size:clamp(28px,4.5vw,46px);font-weight:800;margin:6px 0 4px}
 h1.title em{font-style:normal;color:var(--lime)}
@@ -221,6 +225,7 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
 <div class="wrap">
   <header class="top">
     <a class="brand" href="#scanner"><span class="brandico">📈</span><b>Scalping Scanner</b><small>Agzent</small></a>
+    <nav class="sitenav" aria-label="Markets"><a href="/scanner/" aria-current="page">Crypto</a><a href="/forex/">Forex</a></nav>
     <div class="toplinks"><span class="toplink" id="age">—</span><a class="toplink" href="/bugbounty/">Bug Bounty ↗</a><button class="toplink" id="refreshBtn" type="button">Refresh</button><button class="toplink" id="lockBtn" type="button">Lock</button></div>
   </header>
 
@@ -347,6 +352,6 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
 </div>
 <div class="toast" id="toast" role="status"></div>
 <script src="vendor/lightweight-charts.standalone.production.js"></script>
-<script type="module" src="app.js?v=20261024b"></script>
+<script type="module" src="app.js?v=20261027a"></script>
 </body>
 </html>

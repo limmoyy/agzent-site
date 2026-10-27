@@ -1,8 +1,9 @@
 // /scanner app: passphrase gate + the VPS snapshot (Scanner tab), and live browser tools on Gate.io candles:
 // Scan with Claude, Chart (TradingView Lightweight Charts), Backtest, Capital sim.
-import { STRATEGIES, backtest, run, stats, simulateMoney, REASON, COSTS, TF_MIN } from './lab/engine.js?v=20261024a';
+import { STRATEGIES, backtest, run, stats, simulateMoney, REASON, COSTS, TF_MIN } from './lab/engine.js?v=20261027a';
 import { CLAUDE, claudeParams, sweepHours, claudeSignals, tokenContext, marketRead, scoreSetup, narrative, digitsFor, formingState, formingSay } from './lab/claude.js?v=20261024a';
-import { candles, closed, pool, TF_SEC } from './lab/data.js';
+import { candles, closed, pool, TF_SEC } from './lab/data.js?v=20261027a';
+import { decryptSnap } from './lab/gate.js?v=20261027a';
 import { makeChart, makeLineChart, toChartTime } from './lab/chart.js';
 import { ema } from './lab/ind.js';
 
@@ -35,26 +36,7 @@ function bindPref(sel, key, kind = 'value') {
   el.addEventListener('change', () => { prefs[key] = kind === 'checked' ? el.checked : el.value; savePrefs(); });
 }
 
-// ── gate: same scheme + passphrase as /bugbounty; v2 snapshots are gzip-compressed before encryption ──
-const te = new TextEncoder(), td = new TextDecoder();
-const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-async function deriveKey(pw, salt, iters) {
-  const base = await crypto.subtle.importKey('raw', te.encode(pw), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: iters, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
-}
-async function fetchPkg() {
-  let file = 'scanner.enc.json';
-  try { const m = await (await fetch('scanner.manifest.json?_=' + Date.now(), { cache: 'no-store' })).json(); if (m && m.file) file = m.file; } catch (_) { }
-  return (await fetch(file + '?_=' + Date.now(), { cache: 'no-store' })).json();
-}
-async function decryptSnap(pw) {
-  const pkg = await fetchPkg();
-  const key = await deriveKey(pw, b64d(pkg.salt), pkg.iter || 200000);
-  let pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(pkg.iv) }, key, b64d(pkg.ct));
-  if (pkg.z === 'gzip' && typeof DecompressionStream === 'undefined') throw new Error('This browser is too old to open the snapshot (no DecompressionStream).');
-  if (pkg.z === 'gzip') pt = await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
-  return JSON.parse(td.decode(pt));
-}
+// ── gate: same scheme + passphrase as /bugbounty (lab/gate.js, shared with /forex) ──
 
 let SNAP = null, PW = '';
 const ST = { q: '', state: '', sort: 'fwd_t', dir: 1 };
