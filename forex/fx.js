@@ -10,7 +10,14 @@
 //   Best: trend pullback (EMA 100 trend + RSI 14 dip, TP 1 % / SL 1.5 %, 24 h time stop) on 5m — 747 trades,
 //   +8.4 bp, t 2.6, 5 of 6 half-periods positive. But the profit is the trend side in rising samples (gold 2025
 //   longs +25 bp, Nasdaq 2026 longs +26 bp, shorts ≈ 0; flat gold 2026: −0.3 bp), the median trade lasts 11–14 h
-//   and over half are held overnight (broker swap not modelled). Experimental: paper-trade it.
+//   and over half are held overnight (broker swap not modelled).
+// Holding time is the edge: the same entries with ATR brackets (median hold 25–45 min) earn ≈ 0 bp; a plain time exit
+// earns +1.3 bp after 1 h and +4.3 bp after 4 h. 5m moves themselves (momentum, reversal, hour-of-day drift, extreme
+// bars, distance from the day's TWAP) showed no stable predictability.
+// Intraday mode (default): the same entries only 02:00–13:00 ET, out after 2 h or at 16:45 ET, 0.6 % protective stop:
+//   459 trades, +3.6 bp, t 2.0, 4 of 6 halves, longs +2 and shorts +6 — no overnight swap. Fragile: 2× spread → +2 bp,
+//   4× → −1 bp; neighbouring settings +1–2 bp; entries at any hour ≈ 0; on 1m it loses (−1.8 bp), 15m +1.3 bp.
+// Experimental either way: paper-trade it.
 import { STRATEGIES } from '../scanner/lab/engine.js?v=20261027a';
 import { nyOffset, ema, rsi, atr } from '../scanner/lab/ind.js';
 
@@ -87,11 +94,33 @@ const rsiEma = STRATEGIES.rsi_ema.signals;
 /** Claude FX · Trend Pullback: the lab's RSI-dip-with-EMA-trend rule, plus a 24 h time stop. Long when price is
  *  above EMA 100 and RSI 14 dips under 40; short when below EMA 100 and RSI rises over 60. TP 1 %, SL 1.5 %. */
 export const FX_TREND = {
-  title: 'Claude FX · Trend Pullback', tf: '5m', tfs: ['1m', '5m', '15m'],
+  title: 'Claude FX · Swing Pullback (holds up to 24 h)', tf: '5m', tfs: ['1m', '5m', '15m'],
   params: { ema_n: 100, rsi_n: 14, rsi_lo: 40, tp: 0.01, sl: 0.015, max_hold: 1440 },
   help: { ema_n: 'Trend EMA length', rsi_n: 'RSI length', rsi_lo: 'Long when RSI < this (short when > 100 − this)', tp: 'Take-profit (fraction of price)', sl: 'Stop-loss (fraction of price)', max_hold: 'Time stop (minutes)' },
   signals: rsiEma,
 };
+/** Claude FX · Intraday Pullback: the same trend-dip entries, taken only 02:00–13:00 ET (London + New York morning),
+ *  closed after hold_min minutes or at flat_m ET, whichever first, with a protective stop. No fixed target: in the
+ *  research, targets and tight brackets cut the trades that needed time to work. */
+function intraday(b, p, ctx) {
+  const n = b.c.length, e = ema(b.c, p.ema_n), r = rsi(b.c, p.rsi_n), tfMin = ctx.tfMin;
+  const le = bools(n), se = bools(n), lx = bools(n), sx = bools(n), sl_p = nanArr(n);
+  for (let i = 1; i < n; i++) {
+    const k = etClock(b.t[i]), c = b.c[i];
+    if (k.m + tfMin >= p.flat_m && k.m < p.flat_m + tfMin) { lx[i] = sx[i] = 1; continue; }
+    if (!(k.m >= p.win0 && k.m < p.win1)) continue;
+    if (c > e[i] && r[i] < p.rsi_lo) { le[i] = 1; sl_p[i] = c * (1 - p.stop_pct); }
+    else if (c < e[i] && r[i] > 100 - p.rsi_lo) { se[i] = 1; sl_p[i] = c * (1 + p.stop_pct); }
+  }
+  return { le, se, lx, sx, sl_p, maxHold: Math.max(1, Math.round(p.hold_min / tfMin)), reverse: false };
+}
+export const FX_INTRADAY = {
+  title: 'Claude FX · Intraday Pullback (out within 2 h)', tf: '5m', tfs: ['1m', '5m', '15m'],
+  params: { ema_n: 100, rsi_n: 14, rsi_lo: 40, stop_pct: 0.006, hold_min: 120, win0: 120, win1: 780, flat_m: 1005 },
+  help: { stop_pct: 'Protective stop (fraction of price)', hold_min: 'Close after this many minutes', win0: 'Entries from (minutes after midnight ET; 120 = 02:00)', win1: 'Entries until (780 = 13:00 ET)', flat_m: 'Close everything at (1005 = 16:45 ET)' },
+  signals: intraday,
+};
+
 /** Claude's Sweep & Reclaim (failed in research; kept for comparison): a candle in London / NY morning hours that pokes
  *  through the Asian range or previous day's low (high) and closes back inside, with a long wick. Limit in the wick. */
 function sweep(b, p, ctx) {
@@ -144,6 +173,7 @@ function orb(b, p, ctx) {
   return { le, se, lx, sx, sl_p, tp_p, maxHold: 0, reverse: false };
 }
 export const FX_STRATS = {
+  intraday: FX_INTRADAY,
   trend: FX_TREND,
   sweep: { title: 'Claude · Sweep & Reclaim (failed in research)', tf: '5m', tfs: ['1m', '5m', '15m'],
     params: { rng_atr: 1, wick: 0.5, ent_frac: 0.4, buf: 0.2, min_risk_bp: 5, tp1_r: 1, tp2_r: 2.5, limit_bars: 3, max_hold_h: 4, win0: 120, win1: 690, exit_m: 960 },
@@ -154,7 +184,7 @@ export const FX_STRATS = {
   ...Object.fromEntries(['session_breakout', 'ema_pullback', 'rsi_ema'].map(id => [id, { ...STRATEGIES[id], title: `Lab · ${id}`, tfs: ['1m', '5m', '15m'] }])),
 };
 
-/** What the trend-pullback rule is waiting for on the last closed candle. */
+/** What the pullback rules are waiting for on the last closed candle (both modes share the entry). */
 export function trendState(b, p) {
   const k = b.forming ? b.c.length - 2 : b.c.length - 1;
   if (k < p.ema_n) return null;

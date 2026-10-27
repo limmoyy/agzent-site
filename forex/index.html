@@ -258,7 +258,7 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
 
   <h1 class="title">Forex <em>Desk</em></h1>
   <p class="sub">Gold (XAUUSD) and Nasdaq 100 (NAS100) on 1m, 5m and 15m: market clock, the session levels traders watch, Claude's trend-pullback rule with entry / stop / target and lot size, TradingView-style charts and backtests. Prices are Gate.io index candles — the underlying gold and Nasdaq-100 price — so your broker's quote can sit a little off; type your broker's price to shift every level.</p>
-  <div class="warn-banner"><b>Experimental — no proven edge.</b> Claude tested ~170 intraday setups on gold and Nasdaq and found none that beats costs on its own. The trend pullback shown here made money only when the market trended; it lost nothing much otherwise, but it holds trades for hours. Paper-trade it first.</div>
+  <div class="warn-banner"><b>Experimental — weak, fragile edge.</b> Claude tested ~200 intraday setups on gold and Nasdaq. Five-minute moves turned out close to unpredictable; the pullback rule here earns a few bp a trade only when held long enough, only with a low spread, and not on 1m. Paper-trade it first.</div>
 
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-tab="desk" aria-selected="true"><span class="spark">✦</span>Claude FX</button>
@@ -271,11 +271,12 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
     <div class="card" id="clockCard"></div>
     <div class="hero" style="margin-top:14px">
       <div>
-        <div class="claude-badge">✦ CLAUDE FX · TREND PULLBACK</div>
+        <div class="claude-badge">✦ CLAUDE FX · PULLBACK</div>
         <h2>Gold &amp; Nasdaq right now</h2>
-        <p>Trade with the trend, enter on the dip: long when price is above EMA 100 and RSI 14 dips under 40, short when it is below EMA 100 and RSI rises over 60. Target 1 %, stop 1.5 %, out after 24 h. 5m is the timeframe it was researched on.</p>
+        <p>Trade with the trend, enter on the dip: long when price is above EMA 100 and RSI 14 dips under 40, short when it is below EMA 100 and RSI rises over 60. <b>Intraday</b> (default): entries in the London + New York morning, out within 2 hours, stop 0.6 %, flat before the daily close. <b>Swing</b>: target 1 %, stop 1.5 %, up to 24 h. Both were researched on 5m.</p>
       </div>
       <div class="ctrls" style="margin:0">
+        <div class="fld"><span>Mode</span><div class="seg" id="modeSeg" role="group" aria-label="Mode"><button type="button" data-v="intraday" aria-pressed="true">Intraday</button><button type="button" data-v="trend" aria-pressed="false">Swing</button></div></div>
         <div class="fld"><span>Timeframe</span><div class="seg" id="tfSeg" role="group" aria-label="Timeframe"><button type="button" data-v="1m" aria-pressed="false">1m</button><button type="button" data-v="5m" aria-pressed="true">5m</button><button type="button" data-v="15m" aria-pressed="false">15m</button></div></div>
         <button class="btn pri" id="scanBtn" type="button">✦ Refresh desk</button>
       </div>
@@ -342,6 +343,6 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="../scanner/vendor/lightweight-charts.standalone.production.js"></script>
-<script type="module" src="app.js?v=20261027a"></script>
+<script type="module" src="app.js?v=20261027b"></script>
 </body>
 </html>
