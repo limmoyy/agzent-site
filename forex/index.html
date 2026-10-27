@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.gateio.ws; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.gateio.ws https://data.binance.vision; base-uri 'none'">
 <title>Forex Desk — Agzent</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%232A2220'/><path d='M10 46 L24 30 L34 38 L54 16' fill='none' stroke='%23D9FF57' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -264,6 +264,7 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
     <button class="tab" role="tab" data-tab="desk" aria-selected="true"><span class="spark">✦</span>Claude FX</button>
     <button class="tab" role="tab" data-tab="chart" aria-selected="false">Chart</button>
     <button class="tab" role="tab" data-tab="backtest" aria-selected="false">Backtest</button>
+    <button class="tab" role="tab" data-tab="check" aria-selected="false">Strategy check</button>
   </nav>
 
   <!-- DESK -->
@@ -338,11 +339,25 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
     <div id="btOut" style="margin-top:14px"></div>
   </section>
 
+  <!-- STRATEGY CHECK -->
+  <section class="pane" id="pane-check">
+    <div class="hero">
+      <div>
+        <div class="claude-badge">✦ STRATEGY CHECK</div>
+        <h2>Is it still working?</h2>
+        <p>The current tactic on the research period, the last 2 months and the last month, next to the swing tactic. Recent months come straight from the research's data source (Binance gold and QQQ perps, 1m, up to yesterday), downloaded and simulated in your browser with the costs from the Backtest tab.</p>
+      </div>
+      <div class="ctrls" style="margin:0"><button class="btn pri" id="ckRun" type="button">✦ Run check</button></div>
+    </div>
+    <div class="prog" id="ckProg"><i></i></div>
+    <div id="ckOut"><div class="empty">Press <b>Run check</b>. It downloads about two months of 1-minute candles for gold and Nasdaq (≈ 5–8 MB) and simulates both tactics.</div></div>
+  </section>
+
   <div class="foot">Gold and Nasdaq-100 index prices from Gate.io (public API) · charts by TradingView Lightweight Charts · everything runs in your browser · research only, not financial advice.</div>
 </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="../scanner/vendor/lightweight-charts.standalone.production.js"></script>
-<script type="module" src="app.js?v=20261027b"></script>
+<script type="module" src="app.js?v=20261027c"></script>
 </body>
 </html>

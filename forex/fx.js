@@ -61,6 +61,17 @@ export function marketOnly(b) {
   return out;
 }
 
+/** 1m (or any) candles → min-minute candles aligned to UTC multiples (5m/15m line up with New York times). */
+export function resample(b, min) {
+  const sec = min * 60, out = { t: [], o: [], h: [], l: [], c: [], v: [] };
+  for (let i = 0; i < b.t.length; i++) {
+    const t = Math.floor(b.t[i] / sec) * sec, k = out.t.length - 1;
+    if (k < 0 || out.t[k] !== t) { out.t.push(t); out.o.push(b.o[i]); out.h.push(b.h[i]); out.l.push(b.l[i]); out.c.push(b.c[i]); out.v.push(b.v[i]); }
+    else { out.h[k] = Math.max(out.h[k], b.h[i]); out.l[k] = Math.min(out.l[k], b.l[i]); out.c[k] = b.c[i]; out.v[k] += b.v[i]; }
+  }
+  return out;
+}
+
 // ── session levels ──────────────────────────────────────────────────────────────────────────────
 /** Levels forex traders watch, from the candles of the current and previous trading day:
  *  Asian range (18:00–02:00 ET), previous day high/low, NY opening range (09:30–10:00 ET), today's high/low. */

@@ -5,7 +5,8 @@ import { candles, pool, TF_SEC } from '../scanner/lab/data.js?v=20261027a';
 import { decryptSnap } from '../scanner/lab/gate.js?v=20261027a';
 import { makeChart, makeLineChart, toChartTime } from '../scanner/lab/chart.js';
 import { ema } from '../scanner/lab/ind.js';
-import { INSTR, FX_STRATS, marketState, marketOnly, sessionLevels, trendState, brokerCost, atET, etClock } from './fx.js?v=20261027b';
+import { INSTR, FX_STRATS, marketState, marketOnly, sessionLevels, trendState, brokerCost, atET, etClock, resample } from './fx.js?v=20261027c';
+import { archiveBars } from './archive.js?v=20261027c';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -51,13 +52,14 @@ $('#gateForm').addEventListener('submit', async e => {
 $('#lockBtn').addEventListener('click', () => { try { sessionStorage.removeItem('agz_bb_pw'); } catch (_) { } location.reload(); });
 
 // ── tabs ─────────────────────────────────────────────────────────────────────────────────────
-const TABS = ['desk', 'chart', 'backtest'];
+const TABS = ['desk', 'chart', 'backtest', 'check'];
 function showTab(name) {
   if (!TABS.includes(name)) name = 'desk';
   $$('.tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
   $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + name));
   if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
   if (name === 'chart' && (!CH.b || CH.dirty)) loadChart();
+  if (name === 'check' && !CK.res && !CK.running && document.body.classList.contains('on')) runCheck();
 }
 $$('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 function routeFromHash() { showTab(location.hash.replace('#', '')); }
@@ -449,6 +451,98 @@ $('#btCompare').addEventListener('click', async () => {
   } catch (e) { $('#btOut').innerHTML = `<div class="empty err">Compare failed: ${esc(e.message || e)}</div>`; }
   finally { btn.disabled = false; btn.textContent = 'Compare all strategies'; progress('#btProg', 1, 1); }
 });
+
+// ── strategy check: research period vs the last 2 months vs the last month ──────────────────
+// Recent months use the research's own data (Binance XAUUSDT / QQQUSDT perps, 1m) so the numbers compare like for like.
+const CK = { res: null, running: false, eq: null };
+const ARCH = { XAUUSD: 'XAUUSDT', NAS100: 'QQQUSDT' };
+const TACTICS = [['intraday', 'Intraday (current)'], ['trend', 'Swing']];
+// full research samples, both tactics (same costs as the defaults here); see fx.js for the study
+const RESEARCH = [
+  ['Gold · XAUUSDT perp, Dec 2025 – Oct 2026', { n: 180, win: .55, avg: 4.0, sum: 717, t: 1.26, L: 1.7, S: 7.1 }, { n: 293, win: .47, avg: -0.3, sum: -79, t: -0.05 }],
+  ['Gold · PAXG spot, 2025', { n: 163, win: .53, avg: 4.6, sum: 746, t: 1.61, L: 4.6, S: 4.5 }, { n: 277, win: .50, avg: 13.8, sum: 3833, t: 2.82 }],
+  ['Nasdaq · QQQUSDT perp, Apr – Oct 2026', { n: 116, win: .47, avg: 1.5, sum: 178, t: 0.48, L: -1.4, S: 5.8 }, { n: 177, win: .53, avg: 14.2, sum: 2510, t: 2.32 }],
+  ['All research samples', { n: 459, win: .52, avg: 3.6, sum: 1641, t: 2.0, L: 2.0, S: 5.9 }, { n: 747, win: .50, avg: 8.4, sum: 6264, t: 2.6 }],
+];
+async function runCheck() {
+  if (CK.running) return;
+  CK.running = true;
+  const btn = $('#ckRun'); btn.disabled = true; btn.textContent = 'Downloading…';
+  try {
+    const now = Math.floor(Date.now() / 1000), from = (Math.floor(now / 86400) - 64) * 86400; // 60 days + a few for EMA warm-up
+    const prog = {}, tick = () => { const d = Object.values(prog).reduce((a, x) => a + x[0], 0), t = Object.values(prog).reduce((a, x) => a + x[1], 0); progress('#ckProg', d, t || 1); };
+    const nasRef = D.res?.rows.find(x => x?.inst?.id === 'NAS100')?.price || 29000;
+    const insts = {};
+    await Promise.all(Object.values(INSTR).map(async inst => {
+      const raw = await archiveBars(ARCH[inst.id], from, now, (d, t) => { prog[inst.id] = [d, t]; tick(); });
+      if (raw.t.length < 5000) throw new Error(`only ${raw.t.length} candles for ${ARCH[inst.id]}`);
+      const b = resample(marketOnly(raw), 5), last = b.c[b.c.length - 1];
+      // the QQQ series stands in for NAS100: convert the NAS100 spread (points) with the NAS100 price, not QQQ's
+      const cost = inst.id === 'NAS100' ? brokerCost(inst, nasRef, +$('#spN').value || 0, 0, +$('#slip').value || 0) : brokerCost(inst, last, +$('#spX').value || 0, +$('#cmX').value || 0, +$('#slip').value || 0);
+      const tr = {};
+      for (const [k] of TACTICS) {
+        const S = FX_STRATS[k], res = run(b, S.signals(b, S.params, { tfMin: 5 }), cost);
+        tr[k] = res.trades.filter(x => !x.open).map(x => ({ ...x, inst: inst.id, tIn: b.t[x.ei], tOut: b.t[x.xi] + 300, bp: x.net * 1e4 }));
+      }
+      insts[inst.id] = { inst, end: b.t[b.t.length - 1] + 300, start: b.t[0], tr };
+    }));
+    CK.res = { at: Date.now(), insts };
+    renderCheck();
+  } catch (e) { $('#ckOut').innerHTML = `<div class="empty err">Check failed: ${esc(e.message || e)}. data.binance.vision must be reachable from this network.</div>`; }
+  finally { CK.running = false; btn.disabled = false; btn.textContent = '✦ Run check'; progress('#ckProg', 1, 1); }
+}
+$('#ckRun').addEventListener('click', runCheck);
+function renderCheck() {
+  const r = CK.res, I = r.insts, end = Math.min(...Object.values(I).map(x => x.end));
+  const win = days => [end - days * 86400, end];
+  const pick = (id, k, [a, b]) => (id ? I[id].tr[k] : Object.values(I).flatMap(x => x.tr[k])).filter(x => x.tIn >= a && x.tIn < b);
+  const side = (list, s) => stats(list.filter(x => x.side === s));
+  const cells = (st, ls) => st.n ? `<td>${st.n}</td><td>${Math.round(st.win * 100)}%</td><td class="${cls(st.avg)}">${sgn(st.avg, 1)}</td><td class="${cls(st.sum)}">${sgn(st.sum, 0)}</td><td>${n2(st.t, 2)}</td>${ls ? `<td class="dim">${sgn(ls[0], 1)} / ${sgn(ls[1], 1)}</td>` : ''}` : `<td>0</td><td colspan="${ls ? 5 : 4}" class="dim">no trades</td>`;
+  const swingCells = st => st.n ? `<td>${st.n}</td><td class="${cls(st.avg)}">${sgn(st.avg, 1)}</td><td class="${cls(st.sum)}">${sgn(st.sum, 0)}</td><td>${n2(st.t, 2)}</td>` : '<td>0</td><td colspan="3" class="dim">no trades</td>';
+  const live = (label, days) => {
+    const w = win(days), rows = [['Gold', 'XAUUSD'], ['Nasdaq', 'NAS100'], ['Both', null]];
+    return rows.map(([name, id], i) => {
+      const a = pick(id, 'intraday', w), b = pick(id, 'trend', w), A = stats(a);
+      return `<tr${i === 2 ? ' style="font-weight:600"' : ''}>${i === 0 ? `<td class="l" rowspan="3">${esc(label)}<br><span class="dim">${esc(fmtWib(w[0]))} → ${esc(fmtWib(w[1]))}</span></td>` : ''}<td class="l">${name}</td>
+        ${cells(A, [side(a, 1).avg, side(a, -1).avg])}${swingCells(stats(b))}</tr>`;
+    }).join('');
+  };
+  const research = RESEARCH.map(([label, a, b], i) => `<tr${i === 3 ? ' style="font-weight:600"' : ''}>${i === 0 ? '<td class="l" rowspan="4">Research period<br><span class="dim">Binance archives, 2025 – Oct 2026</span></td>' : ''}<td class="l">${esc(label)}</td>${cells(a, [a.L, a.S])}${swingCells(b)}</tr>`).join('');
+  // plain-language read of the current tactic
+  const say = [], m1 = win(30);
+  for (const [name, id, base] of [['Gold', 'XAUUSD', 4.3], ['Nasdaq', 'NAS100', 1.5]]) {
+    const list = pick(id, 'intraday', m1), st = stats(list);
+    if (!st.n) { say.push(`${name}: no intraday trades in the last month.`); continue; }
+    const sd = Math.sqrt(list.reduce((q, x) => q + (x.bp - st.avg) ** 2, 0) / Math.max(1, st.n - 1)), band = 2 * sd / Math.sqrt(st.n);
+    const verdict = st.avg < 0 && st.t <= -1.5 ? 'clearly worse than the research — consider pausing it' : st.avg < 0 ? 'negative, but within the noise of so few trades' : st.avg >= base ? 'in line with or better than the research' : 'positive but below the research average';
+    say.push(`${name}: ${st.n} trades last month, ${sgn(st.avg, 1)} bp a trade (research ≈ ${sgn(base, 1)}); with this few trades anything within ±${n2(band, 0)} bp is noise — ${verdict}.`);
+  }
+  // week by week, current tactic
+  const wk = new Map();
+  for (const x of pick(null, 'intraday', win(60))) {
+    const d = Math.floor((x.tIn + 7 * 3600) / 86400), monday = d - (d + 3) % 7;
+    const g = wk.get(monday) || { XAUUSD: [], NAS100: [] }; g[x.inst].push(x); wk.set(monday, g);
+  }
+  const wcell = l => { const st = stats(l); return st.n ? `<td>${st.n}</td><td class="${cls(st.sum)}">${sgn(st.sum, 0)}</td>` : '<td>0</td><td class="dim">—</td>'; };
+  const weeks = [...wk.entries()].sort((a, b) => b[0] - a[0]).map(([d, g]) => `<tr><td class="l">${esc(new Date(d * 864e5).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }))}</td>${wcell(g.XAUUSD)}${wcell(g.NAS100)}${(() => { const st = stats([...g.XAUUSD, ...g.NAS100]); return `<td class="${cls(st.sum)}">${st.n ? sgn(st.sum, 0) : '—'}</td>`; })()}</tr>`).join('');
+  const recent = pick(null, 'intraday', win(60)).sort((a, b) => b.tIn - a.tIn).slice(0, 12);
+  $('#ckOut').innerHTML = `<div class="card"><h2 class="sec">Current tactic vs swing, by period</h2>
+      <ul class="say" style="margin-bottom:12px">${say.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
+      <div class="tblwrap"><table class="tk sm" style="min-width:860px"><thead>
+        <tr><th class="l" rowspan="2">Period</th><th class="l" rowspan="2">Market</th><th colspan="6" style="text-align:center;color:var(--lime)">Intraday (current) · out within 2 h</th><th colspan="4" style="text-align:center">Swing · up to 24 h</th></tr>
+        <tr><th>Trades</th><th>Win</th><th>Avg bp</th><th>Total bp</th><th>t</th><th>Long / short bp</th><th>Trades</th><th>Avg bp</th><th>Total bp</th><th>t</th></tr></thead>
+        <tbody>${research}${live('Last 2 months', 60)}${live('Last month', 30)}</tbody></table></div>
+      <p class="note">Recent rows: data through ${esc(fmtWib(end))} WIB (the archive is published a day or two late), costs from the Backtest tab (${esc($('#spX').value)} $ gold spread + $${esc($('#cmX').value)}/lot, ${esc($('#spN').value)} pt Nasdaq spread, ${esc($('#slip').value)} bp slippage). Nasdaq here is the QQQ perp, as in the research. The last months overlap the end of the research period, so they are a check-up, not fresh proof. t below ~2 means the average could still be luck.</p></div>
+    <div class="grid2" style="margin-top:14px">
+      <div class="card"><h2 class="sec">Intraday equity, last 2 months <span class="dim" style="font:13px var(--body)">(cumulative net bp, both markets)</span></h2><div class="chartbox" id="ckEq"></div></div>
+      <div class="card"><h2 class="sec">Week by week · intraday</h2><div class="tblwrap"><table class="tk sm" style="min-width:0"><thead><tr><th class="l">Week of</th><th>Gold</th><th>bp</th><th>Nasdaq</th><th>bp</th><th>Total bp</th></tr></thead><tbody>${weeks || '<tr><td class="l" colspan="6">No trades.</td></tr>'}</tbody></table></div></div>
+    </div>
+    <div class="card"><h2 class="sec">Latest intraday trades</h2><div class="tblwrap"><table class="tk sm"><thead><tr><th class="l">Entry (WIB)</th><th class="l">Market</th><th class="l">Side</th><th>Entry</th><th>Exit</th><th class="l">Exit reason</th><th>Net bp</th><th>Held</th></tr></thead><tbody>
+      ${recent.map(x => `<tr><td class="l">${fmtWib(x.tIn)}</td><td class="l"><span class="sym">${x.inst === 'NAS100' ? 'QQQ (NAS)' : 'XAU'}</span></td><td class="l side-${x.side}">${x.side === 1 ? 'long' : 'short'}</td><td>${n2(x.ep, 2)}</td><td>${n2(x.xp, 2)}</td><td class="l">${esc(reasonTxt(x.reason))}</td><td class="${cls(x.bp)}">${sgn(x.bp, 0)}</td><td class="dim">${held(x.tOut - x.tIn)}</td></tr>`).join('')}
+    </tbody></table></div></div>`;
+  CK.eq?.destroy(); CK.eq = makeLineChart($('#ckEq'), { height: 240 });
+  let cum = 0; CK.eq.set(pick(null, 'intraday', win(60)).sort((a, b) => a.tOut - b.tOut).map(x => ({ t: x.tOut, v: cum += x.bp })));
+}
 
 // ── research notes (static: the offline study) ───────────────────────────────────────────────
 $('#researchBody').innerHTML = `
