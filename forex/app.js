@@ -3,7 +3,7 @@
 import { run, stats, REASON, TF_MIN } from '../scanner/lab/engine.js?v=20261028a';
 import { candles, pool, TF_SEC } from '../scanner/lab/data.js?v=20261027a';
 import { decryptSnap } from '../scanner/lab/gate.js?v=20261027a';
-import { makeChart, makeLineChart, toChartTime } from '../scanner/lab/chart.js';
+import { makeChart, makeLineChart, toChartTime } from '../scanner/lab/chart.js?v=20261028b';
 import { ema } from '../scanner/lab/ind.js';
 import { INSTR, FX_STRATS, marketState, marketOnly, sessionLevels, trendState, trendState5, brokerCost, atET, etClock, resample } from './fx.js?v=20261028a';
 import { archiveBars } from './archive.js?v=20261027c';
@@ -343,7 +343,7 @@ async function loadChart() {
     CH.lv = sessionLevels(b);
     drawChart();
     if (CH.focusAt) { const t = CH.trades.find(x => Math.abs(x.tIn - CH.focusAt) < tfSec(tf)); if (t) selectTrade(t); else CH.chart.focus(CH.focusAt, null, 60); CH.focusAt = null; }
-    else CH.chart.showRecent(tf === '1m' ? 240 : 180);
+    else { const lv = liveView(), sec = tfSec(tf); CH.chart.showRecent(tf === '1m' ? 240 : 180, lv?.t1 ? Math.min(40, Math.max(8, Math.ceil((lv.t1 - b.t[b.t.length - 1]) / sec) + 2)) : 8); }
   } catch (e) { $('#chSide').innerHTML = `<div class="err">Could not load ${esc(inst.id)} ${esc(tf)}: ${esc(e.message || e)}</div>`; }
 }
 function drawChart() {
@@ -360,21 +360,38 @@ function drawChart() {
     const L = CH.lv, add = (z, color, name) => { if (z && z.hi > -Infinity) lines.push({ price: z.hi, color, title: name + ' H', style: 2 }, { price: z.lo, color, title: name + ' L', style: 2 }); };
     add(L.asia, '#B98CFF', 'Asia'); add(L.prev, '#FF9F5A', 'Prev day'); add(L.or, '#7FD7E8', 'NY OR');
   }
-  const lv = CH.live?.position || CH.live?.pending;
+  const lv = liveView();
   if (lv) {
-    const en = lv.ep ?? lv.price;
-    lines.push({ price: en, color: C.lime, title: CH.live.position ? 'Entry (filled)' : 'Entry ≈ next open', width: 2, style: 0 }, { price: lv.sl, color: C.down, title: 'Stop', width: 2, style: 0 }, { price: lv.tp, color: C.up, title: 'Target', width: 2, style: 0 });
-    boxes.push({ t0: CH.live.position ? b.t[lv.ei] : lastT, entry: en, sl: lv.sl, tp: lv.tp, label: `${lv.side === 1 ? 'LONG' : 'SHORT'} · ${n2(Math.abs(lv.tp - en) / Math.abs(en - lv.sl), 2)}R` });
+    // the box carries the names; the lines keep the prices on the axis
+    lines.push({ price: lv.en, color: C.lime, width: 2, style: 0 }, { price: lv.sl, color: C.down, width: 2, style: 0 }, { price: lv.tp, color: C.up, width: 2, style: 0 });
+    const what = lv.tp === lv.tp ? `${n2(Math.abs(lv.tp - lv.en) / Math.abs(lv.en - lv.sl), 2)}R` : lv.limit ? `valid until ${fmtWib(lv.t1, { time: true })} WIB` : lv.t1 ? `no target · out by ${fmtWib(lv.t1, { time: true })} WIB` : 'no target';
+    boxes.push({ t0: lv.t0, t1: lv.t1, side: lv.side, entry: lv.en, sl: lv.sl, tp: lv.tp, now: lv.pos ? b.c[b.c.length - 1] : null,
+      label: `${lv.side === 1 ? 'LONG' : 'SHORT'}${lv.limit ? ' ' + lv.limit.toUpperCase() : lv.pos ? ` ${sgn((b.c[b.c.length - 1] / lv.en - 1) * 1e4 * lv.side, 0)} bp` : ' · next open'} · ${what}` });
   }
-  // intraday trades have no target: shade entry → exit when it won
-  if (CH.sel && CH.sel.sl === CH.sel.sl) boxes.push({ t0: bar(CH.sel.tIn), t1: bar(CH.sel.tOut - sec) + sec, entry: CH.sel.ep, sl: CH.sel.sl, tp: CH.sel.tp === CH.sel.tp ? CH.sel.tp : (CH.sel.bp > 0 ? CH.sel.xp : CH.sel.ep), label: `${CH.sel.side === 1 ? 'LONG' : 'SHORT'} ${sgn(CH.sel.bp, 0)} bp · ${reasonTxt(CH.sel.reason)}` });
+  // a selected trade: stop zone, target zone if the strategy has one, and the result shaded entry → exit.
+  // The trade still open is the live box above: don't draw it twice.
+  const sel = CH.sel;
+  if (sel && sel.sl === sel.sl && !(sel.open && CH.live?.position)) boxes.push({ t0: bar(sel.tIn), t1: bar(sel.tOut - sec) + sec, side: sel.side, entry: sel.ep, sl: sel.sl, tp: sel.tp,
+    exit: sel.open ? null : sel.xp, now: sel.open ? b.c[b.c.length - 1] : null, label: `${sel.side === 1 ? 'LONG' : 'SHORT'} ${sgn(sel.bp, 0)} bp · ${reasonTxt(sel.reason)}` });
   CH.chart.setLines(lines); CH.chart.setBoxes(boxes);
   renderChartSide();
 }
+/** The chart's live trade or signal, with where its box starts and ends: a fill → its time exit,
+ *  a market signal → the next open → its time exit, a limit or stop order → the next bar → its expiry. */
+function liveView() {
+  const b = CH.b, sec = tfSec(CH.tf), lastT = b.t[b.t.length - 1], pos = CH.live?.position, lv = pos || CH.live?.pending;
+  if (!lv) return null;
+  const limit = !pos && lv.kind !== 'market' && lv.kind, intra = CH.ov === 'intraday' || CH.ov === 'intraday1m';
+  const t0 = pos ? b.t[lv.ei] : lastT + sec, t1 = limit ? t0 + lv.barsLeft * sec : intra ? closeBy(t0, CH.p) : null;
+  const buy = lv.side === 1 ? 'BUY' : 'SELL';
+  return { pos: !!pos, limit, side: lv.side, en: pos ? lv.ep : lv.price, sl: lv.sl, tp: lv.tp, t0, t1, closeAt: intra && !limit ? t1 : 0,
+    head: pos ? (lv.side === 1 ? 'In a long' : 'In a short') : limit ? `${buy} ${limit.toUpperCase()} · valid until ${fmtWib(t1, { time: true })} WIB` : `${buy} at next open`,
+    rowLabel: pos ? 'Entry (filled)' : limit ? (limit === 'limit' ? 'Limit' : 'Stop entry') : 'Entry ≈' };
+}
 function renderChartSide() {
-  const inst = CH.inst, b = CH.b, last = b.c[b.c.length - 1], lv = CH.live?.position || CH.live?.pending;
+  const inst = CH.inst, b = CH.b, last = b.c[b.c.length - 1], lv = liveView();
   let html = `<h2 class="sec">${esc(inst.id)} · ${esc(CH.tf)}</h2>`;
-  if (lv) html += `<div class="state ${CH.live.position ? 'pos' : 'sig'}"><b>${CH.live.position ? (lv.side === 1 ? 'In a long' : 'In a short') : (lv.side === 1 ? 'BUY at next open' : 'SELL at next open')}</b>${lvRows(inst, lv.ep ?? lv.price, lv.sl, lv.tp, CH.live.position ? 'Entry (filled)' : 'Entry ≈')}${lotBox(inst, lv.ep ?? lv.price, lv.sl)}</div>`;
+  if (lv) html += `<div class="state ${lv.pos ? 'pos' : 'sig'}"><b>${esc(lv.head)}</b>${lvRows(inst, lv.en, lv.sl, lv.tp, lv.rowLabel, lv.closeAt)}${lotBox(inst, lv.en, lv.sl)}</div>`;
   else if (CH.ov === 'trend' || CH.ov === 'intraday' || CH.ov === 'intraday1m') { const t = CH.ov === 'intraday1m' ? trendState5(b, CH.p) : trendState(b, CH.p); html += t ? `<div class="calc"><span>Trend</span><span class="${t.up ? 'pos' : 'neg'}">${t.up ? 'up' : 'down'} (${pct(t.gapPct)} vs EMA 100)</span><span>RSI 14</span><span>${n2(t.rsi, 1)} — needs ${t.up ? '<' : '>'} ${t.rsiNeed}</span></div>` : ''; }
   else html += '<div class="muted">No open trade or signal on the latest candle.</div>';
   html += `<p class="note">Price now ${px(last, inst)} (index)${offsetOf(inst) ? ` · ${px(adj(last, inst), inst)} at your broker` : ''}. Levels on the chart are index prices.</p>`;

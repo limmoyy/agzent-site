@@ -4,7 +4,7 @@ import { STRATEGIES, backtest, run, stats, simulateMoney, REASON, COSTS, TF_MIN 
 import { CLAUDE, claudeParams, sweepHours, claudeSignals, tokenContext, marketRead, scoreSetup, narrative, digitsFor, formingState, formingSay } from './lab/claude.js?v=20261024a';
 import { candles, closed, pool, TF_SEC } from './lab/data.js?v=20261027a';
 import { decryptSnap } from './lab/gate.js?v=20261027a';
-import { makeChart, makeLineChart, toChartTime } from './lab/chart.js';
+import { makeChart, makeLineChart, toChartTime } from './lab/chart.js?v=20261028b';
 import { ema } from './lab/ind.js';
 
 const $ = s => document.querySelector(s);
@@ -579,7 +579,7 @@ function drawOverlay() {
     lines.push({ price: lv.sl, color: C.down, title: lv.tp1Hit && lv.sl !== sl0 ? 'Stop (break-even)' : 'Stop', width: 2, style: 0 });
     if (lv.tp1 === lv.tp1) lines.push({ price: lv.tp1, color: C.up, title: 'TP1 ½', style: 2 });
     if (lv.tp === lv.tp) lines.push({ price: lv.tp, color: C.up, title: 'TP2', width: 2, style: 0 });
-    if (lv.tp === lv.tp && sl0 === sl0) boxes.push({ t0, entry: en, sl: sl0, tp: lv.tp, tp1: lv.tp1 === lv.tp1 ? lv.tp1 : null,
+    if (lv.tp === lv.tp && sl0 === sl0) boxes.push({ t0, side: lv.side, entry: en, sl: sl0, tp: lv.tp, tp1: lv.tp1 === lv.tp1 ? lv.tp1 : null, now: CH.live.position ? b.c[b.c.length - 1] : null,
       label: `${lv.side === 1 ? 'LONG' : 'SHORT'} · ${n2(Math.abs(lv.tp - en) / Math.abs(en - sl0), 1)}R` });
   }
   const fs = !lv && CH.forming;
@@ -594,7 +594,8 @@ function drawOverlay() {
   }
   if (CH.sel && CH.sel.sl === CH.sel.sl && CH.sel.tp === CH.sel.tp) {
     const x = CH.sel;
-    boxes.push({ t0: barTime(x.tIn), t1: barTime(x.tOut - tfSec(CH.tf)) + tfSec(CH.tf), entry: x.ep, sl: x.sl, tp: x.tp, tp1: x.tp1 === x.tp1 ? x.tp1 : null, label: `${x.side === 1 ? 'LONG' : 'SHORT'} ${sgn(x.bp, 0)} bp · ${reasonTxt(x.reason)}` });
+    boxes.push({ t0: barTime(x.tIn), t1: barTime(x.tOut - tfSec(CH.tf)) + tfSec(CH.tf), side: x.side, entry: x.ep, sl: x.sl, tp: x.tp, tp1: x.tp1 === x.tp1 ? x.tp1 : null,
+      exit: x.open ? null : x.xp, now: x.open ? b.c[b.c.length - 1] : null, label: `${x.side === 1 ? 'LONG' : 'SHORT'} ${sgn(x.bp, 0)} bp · ${reasonTxt(x.reason)}` });
   } else if (CH.sel) {
     lines.push({ price: CH.sel.ep, color: C.lime, title: 'Entry', style: 2 }, { price: CH.sel.xp, color: CH.sel.bp >= 0 ? C.up : C.down, title: 'Exit', style: 2 });
   }
