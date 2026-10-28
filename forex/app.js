@@ -1,11 +1,11 @@
 // /forex app: passphrase gate (same as /scanner), the Claude FX desk for XAUUSD + NAS100, chart and backtest.
 // Everything runs in the browser on Gate.io index candles; closed-market candles are dropped (see fx.js).
-import { run, stats, REASON, TF_MIN } from '../scanner/lab/engine.js?v=20261027a';
+import { run, stats, REASON, TF_MIN } from '../scanner/lab/engine.js?v=20261028a';
 import { candles, pool, TF_SEC } from '../scanner/lab/data.js?v=20261027a';
 import { decryptSnap } from '../scanner/lab/gate.js?v=20261027a';
 import { makeChart, makeLineChart, toChartTime } from '../scanner/lab/chart.js';
 import { ema } from '../scanner/lab/ind.js';
-import { INSTR, FX_STRATS, marketState, marketOnly, sessionLevels, trendState, brokerCost, atET, etClock, resample } from './fx.js?v=20261027c';
+import { INSTR, FX_STRATS, marketState, marketOnly, sessionLevels, trendState, trendState5, brokerCost, atET, etClock, resample } from './fx.js?v=20261028a';
 import { archiveBars } from './archive.js?v=20261027c';
 
 const $ = s => document.querySelector(s);
@@ -66,7 +66,7 @@ function routeFromHash() { showTab(location.hash.replace('#', '')); }
 window.addEventListener('hashchange', routeFromHash);
 
 // ── shared: costs, signals, trades ───────────────────────────────────────────────────────────
-const BARS = { '1m': 2880, '5m': 9990, '15m': 3600, '1h': 6000 }; // Gate's index 15m history is short (≈ 40 days)
+const BARS = { '1m': 9990, '5m': 9990, '15m': 3600, '1h': 6000 }; // Gate keeps ~7 days of 1m; its index 15m history is short (≈ 40 days)
 function costFor(inst, price) {
   const xau = inst.id === 'XAUUSD';
   return brokerCost(inst, price, +(xau ? $('#spX').value : $('#spN').value) || 0, xau ? +$('#cmX').value || 0 : 0, +$('#slip').value || 0);
@@ -118,9 +118,11 @@ function renderPlaybook() {
 const D = { res: null, running: false, nextAt: 0 };
 const deskTf = () => ['1m', '5m', '15m'].includes(prefs.tf) ? prefs.tf : '5m';
 const deskMode = () => prefs.mode === 'trend' ? 'trend' : 'intraday'; // intraday (default) or swing
+// intraday on 1m runs its own strategy: the 5m signal executed with a 1m limit
+const deskStrat = (tf = deskTf()) => deskMode() === 'intraday' && tf === '1m' ? 'intraday1m' : deskMode();
 const TF_NOTE = {
   intraday: {
-    '1m': '<b>Intraday on 1m:</b> loses (−1.8 bp a trade, negative in all 6 test halves). Use 1m only to time an entry the 5m rule gave.',
+    '1m': '<b>Intraday on 1m:</b> the 5m signal, entered with a 1m limit one 1m-ATR better (valid 30 min). Locked test Sep–Oct 2026: 53 trades, +6.7 bp a trade (gold +14.6, Nasdaq −1.5); the old 1m rule lost −2.9 bp. Same number of signals as 5m, better prices; about 1 in 5 limits does not fill.',
     '5m': '<b>Intraday on 5m:</b> the researched setting — 459 trades, +3.6 bp a trade (t 2.0), longs and shorts both positive. Fragile: needs a low spread.',
     '15m': '<b>Intraday on 15m:</b> weak (+1.3 bp, 3 of 6 halves).',
   },
@@ -134,10 +136,10 @@ async function analyze(inst, tf, ttl) {
   const raw = await candles(inst.contract, tf, BARS[tf], ttl);
   const b = marketOnly(raw);
   if (b.t.length < 150) throw new Error(`only ${b.t.length} ${tf} candles`);
-  const sim = simulate(inst, b, deskMode(), tf);
+  const strat = deskStrat(tf), sim = simulate(inst, b, strat, tf);
   const sdNow = etClock(b.t[b.t.length - 1]).sd;
   let prevClose = NaN; for (let i = b.t.length - 1; i >= 0; i--) if (etClock(b.t[i]).sd !== sdNow) { prevClose = b.c[i]; break; }
-  return { inst, tf, mode: deskMode(), b, ...sim, st: stats(closedOnly(sim.trades)), trend: trendState(b, sim.p), lv: sessionLevels(b), price: raw.c[raw.c.length - 1], prevClose };
+  return { inst, tf, mode: deskMode(), strat, b, ...sim, st: stats(closedOnly(sim.trades)), trend: strat === 'intraday1m' ? trendState5(b, sim.p) : trendState(b, sim.p), lv: sessionLevels(b), price: raw.c[raw.c.length - 1], prevClose };
 }
 async function scanDesk({ auto = false } = {}) {
   if (D.running) { if (!auto) D.again = true; return; } // e.g. the timeframe changed mid-scan: run once more after
@@ -209,6 +211,13 @@ function stateBox(r) {
       <p class="say">The rule went ${pos.side === 1 ? 'long' : 'short'} at ${esc(fmtWib(b.t[pos.ei]))} WIB. If you are not in it, don't chase — wait for the next signal. ${intra ? `It closes at ${esc(fmtWib(by, { time: true }))} WIB.` : `Time stop in ~${countdown(left * tfSec(tf))} of market time.`}</p>
       ${lotBox(inst, pos.ep, pos.sl)}</div>`;
   }
+  if (pend && pend.kind === 'limit') {
+    const until = Date.now() / 1000 + pend.barsLeft * tfSec(tf);
+    return `<div class="state sig"><div class="sh"><b>${pend.side === 1 ? 'BUY LIMIT' : 'SELL LIMIT'} · valid until ${esc(fmtWib(until, { time: true }))} WIB</b><span class="pill st-signal">SIGNAL</span></div>
+      ${lvRows(inst, pend.price, pend.sl, NaN, 'Limit', 0)}
+      <p class="say">The 5m candle ${pend.side === 1 ? `closed above EMA 100 with RSI ${n2(trend?.rsi, 0)}: a dip in an uptrend` : `closed below EMA 100 with RSI ${n2(trend?.rsi, 0)}: a bounce in a downtrend`}. Place a ${pend.side === 1 ? 'buy' : 'sell'} limit one 1m-ATR better than that close (${dist(pend.price - price, inst)} from here); cancel it if it has not filled by ${esc(fmtWib(until, { time: true }))} WIB. Once filled: stop ${n2(p.stop_pct * 100, 1)} %, no fixed target, close 2 h after the fill or at 16:45 New York.</p>
+      ${lotBox(inst, pend.price, pend.sl)}</div>`;
+  }
   if (pend) {
     const by = intra ? closeBy(Date.now() / 1000, p) : 0;
     return `<div class="state sig"><div class="sh"><b>${pend.side === 1 ? 'BUY' : 'SELL'} at the next ${esc(tf)} open</b><span class="pill st-signal">SIGNAL</span></div>
@@ -221,9 +230,9 @@ function stateBox(r) {
   if (w && !w.inWin) return `<div class="state"><div class="sh"><b>Entry window closed</b><span class="pill">WAIT</span></div>
     <p class="say">Intraday entries only from 02:00 to 13:00 New York (London + New York morning). Next window opens ${esc(fmtWib(w.next, { wd: true }))} WIB${w.next ? ` · in <b data-until="${w.next}">${countdown(Math.round(w.next - Date.now() / 1000))}</b>` : ''}. Trend now: ${trend.up ? 'up' : 'down'}, RSI ${n2(trend.rsi, 0)}.</p></div>`;
   return `<div class="state"><div class="sh"><b>Waiting · trend ${trend.up ? 'up' : 'down'}</b><span class="pill">${close < 5 ? 'CLOSE' : 'NO SIGNAL'}</span></div>
-    <div class="calc"><span>Price vs EMA 100</span><span class="${trend.up ? 'pos' : 'neg'}">${pct(trend.gapPct)} (${px(adj(trend.ema, inst), inst)})</span>
-    <span>RSI 14 now</span><span>${n2(trend.rsi, 1)} — needs ${trend.up ? '<' : '>'} ${trend.rsiNeed}</span></div>
-    <p class="say">Next ${trend.up ? 'buy' : 'sell'} comes when ${esc(trend.want)} while price stays ${trend.up ? 'above' : 'below'} EMA 100. Checked again at every ${esc(tf)} close.</p></div>`;
+    <div class="calc"><span>Price vs EMA 100${r.strat === 'intraday1m' ? ' (5m)' : ''}</span><span class="${trend.up ? 'pos' : 'neg'}">${pct(trend.gapPct)} (${px(adj(trend.ema, inst), inst)})</span>
+    <span>RSI 14${r.strat === 'intraday1m' ? ' (5m)' : ''} now</span><span>${n2(trend.rsi, 1)} — needs ${trend.up ? '<' : '>'} ${trend.rsiNeed}</span></div>
+    <p class="say">Next ${trend.up ? 'buy' : 'sell'} comes when ${esc(trend.want)} while price stays ${trend.up ? 'above' : 'below'} EMA 100${r.strat === 'intraday1m' ? ' — both read on 5m candles; the entry is then a 1m limit' : ''}. Checked again at every ${esc(tf)} close.</p></div>`;
 }
 function lvRows(inst, entry, sl, tp, entryLabel, closeAt) {
   const R = Math.abs(entry - sl);
@@ -264,7 +273,7 @@ $('#instCards').addEventListener('click', e => {
   }
   const z = e.target.closest('[data-reset]'); if (z) { if (prefs.off) delete prefs.off[z.dataset.reset]; savePrefs(); renderDesk(); return; }
   const c = e.target.closest('[data-chart]'); if (c) { openChart(c.dataset.chart, deskTf(), c.dataset.t ? +c.dataset.t : null); return; }
-  const b = e.target.closest('[data-bt]'); if (b) { $('#btInst').value = b.dataset.bt; $('#btTf').value = deskTf(); $('#btStrat').value = deskMode(); renderParams(); showTab('backtest'); runBacktest(); }
+  const b = e.target.closest('[data-bt]'); if (b) { $('#btInst').value = b.dataset.bt; $('#btTf').value = deskTf(); $('#btStrat').value = deskStrat(); renderParams(); showTab('backtest'); runBacktest(); }
 });
 ['#cap', '#risk'].forEach(s => $(s).addEventListener('change', () => { renderDesk(); if (CH.b) renderChartSide(); }));
 
@@ -272,19 +281,23 @@ $('#instCards').addEventListener('click', e => {
 function fxPrompt(x) {
   const { inst, tf, b, live, trend, lv, st, p, price } = x, P = v => px(adj(v, inst), inst), ms = marketState();
   const L = [`Kamu analis trading forex. Review kondisi ${inst.id} dari "Forex Desk" gw. Jawab bahasa Indonesia santai, singkat, poin-poin.`];
-  const rule = x.mode === 'intraday'
+  const rule = x.strat === 'intraday1m'
+    ? `sinyal dihitung di candle 5m; entry pakai limit 1×ATR(1m) lebih bagus dari close 5m, berlaku ${p.lim_min} menit; entry cuma jam 02:00–13:00 New York, tanpa target; keluar ${p.hold_min} menit setelah fill atau jam 16:45 New York, stop ${p.stop_pct * 100}%. Riset: +4,9 bp/trade (t 2,6), tes terkunci Sep–Okt 2026 +6,7 bp.`
+    : x.mode === 'intraday'
     ? `entry cuma jam 02:00–13:00 New York, tanpa target; keluar setelah ${p.hold_min} menit atau jam 16:45 New York, stop ${p.stop_pct * 100}%. Riset 5m: +3,6 bp/trade (t 2,0), rapuh: butuh spread rendah.`
     : `TP ${p.tp * 100}%, SL ${p.sl * 100}%, time stop 24 jam pasar. Riset: untungnya cuma dari pasar yang trending, median trade 11–14 jam.`;
-  L.push(`\nATURAN (${FX_STRATS[x.mode].title}, ${tf}): long kalau harga di atas EMA ${p.ema_n} dan RSI ${p.rsi_n} < ${p.rsi_lo}; short kalau di bawah EMA ${p.ema_n} dan RSI > ${100 - p.rsi_lo}; ${rule}`);
+  L.push(`\nATURAN (${FX_STRATS[x.strat].title}, ${tf}): long kalau harga di atas EMA ${p.ema_n} dan RSI ${p.rsi_n} < ${p.rsi_lo}; short kalau di bawah EMA ${p.ema_n} dan RSI > ${100 - p.rsi_lo}; ${rule}`);
   L.push(`\nSEKARANG: ${fmtWib(Date.now() / 1000)} WIB, pasar ${ms.phase}, sesi ${ms.session || '-'}. Harga ${P(price)} (sudah disesuaikan ke harga broker gw).`);
   if (live.position) L.push(`Status: rule sedang ${live.position.side === 1 ? 'LONG' : 'SHORT'} dari ${P(live.position.ep)}, stop ${P(live.position.sl)}${live.position.tp === live.position.tp ? `, target ${P(live.position.tp)}` : ''}.`);
+  else if (live.pending?.kind === 'limit') L.push(`Status: SINYAL — pasang ${live.pending.side === 1 ? 'BUY' : 'SELL'} LIMIT ${P(live.pending.price)}, berlaku ${live.pending.barsLeft} menit lagi, stop ${P(live.pending.sl)}; tutup 2 jam setelah fill.`);
   else if (live.pending) L.push(`Status: SINYAL ${live.pending.side === 1 ? 'BUY' : 'SELL'} di open candle berikutnya ≈ ${P(live.pending.price)}, stop ${P(live.pending.sl)}${live.pending.tp === live.pending.tp ? `, target ${P(live.pending.tp)}` : `, tutup jam ${fmtWib(closeBy(Date.now() / 1000, p), { time: true })} WIB`}.`);
   else if (trend) L.push(`Status: nunggu. Trend ${trend.up ? 'naik' : 'turun'} (harga ${pct(trend.gapPct)} dari EMA ${P(trend.ema)}), RSI ${n2(trend.rsi, 1)}, butuh ${trend.want}.`);
   const lvl = (n, z) => z && z.hi > -Infinity ? `${n} H ${P(z.hi)} / L ${P(z.lo)}` : null;
   L.push(`Level sesi: ${[lvl('Asia', lv?.asia), lvl('kemarin', lv?.prev), lvl('NY opening range', lv?.or), lvl('hari ini', lv?.today)].filter(Boolean).join('; ')}.`);
   L.push(`Track record rule ini di data yang ke-load (${tf}): ${st.n ? `${st.n} trade, ${sgn(st.avg, 1)} bp, win ${Math.round(st.win * 100)}%` : 'belum ada'}.`);
-  const rows = []; for (let i = Math.max(0, b.t.length - 24); i < b.t.length; i++) rows.push(`${hhmm(b.t[i], 'Asia/Jakarta')} ${P(b.o[i])} ${P(b.h[i])} ${P(b.l[i])} ${P(b.c[i])}`);
-  L.push(`\n${rows.length} candle ${tf} terakhir (jam WIB, O H L C):\n${rows.join('\n')}`);
+  const cb = x.strat === 'intraday1m' ? resample(b, 5) : b, ctf = x.strat === 'intraday1m' ? '5m' : tf; // 1m mode decides on 5m candles
+  const rows = []; for (let i = Math.max(0, cb.t.length - 24); i < cb.t.length; i++) rows.push(`${hhmm(cb.t[i], 'Asia/Jakarta')} ${P(cb.o[i])} ${P(cb.h[i])} ${P(cb.l[i])} ${P(cb.c[i])}`);
+  L.push(`\n${rows.length} candle ${ctf} terakhir (jam WIB, O H L C):\n${rows.join('\n')}`);
   L.push(`\nYANG GW MAU:\n1. Verdict: AMBIL / TUNGGU / SKIP, plus alasan utama.\n2. Ada news besar hari ini (CPI, NFP, FOMC, data US lain) atau event yang bikin gw harus nunggu? Search web kalau bisa.\n3. Level mana yang paling penting buat entry/stop/target, pakai level sesi di atas.\n4. Apa yang bikin rencana ini batal?\nJangan ngarang angka, pakai data di atas.`);
   return L.join('\n');
 }
@@ -309,7 +322,7 @@ setInterval(tick, 1000);
 const CH = { chart: null, b: null, inst: null, tf: '5m', trades: [], live: null, sel: null, dirty: false, focusAt: null };
 $('#chOv').innerHTML = Object.entries(FX_STRATS).map(([k, s]) => `<option value="${k}">${esc(s.title)}</option>`).join('') + '<option value="none">No strategy</option>';
 function openChart(id, tf, at) {
-  $('#chInst').value = id; if (tf) $('#chTf').value = tf; $('#chOv').value = deskMode();
+  $('#chInst').value = id; if (tf) $('#chTf').value = tf; $('#chOv').value = deskStrat(tf || deskTf());
   CH.focusAt = at || null; CH.dirty = true; showTab('chart');
 }
 let chartSeq = 0;
@@ -362,7 +375,7 @@ function renderChartSide() {
   const inst = CH.inst, b = CH.b, last = b.c[b.c.length - 1], lv = CH.live?.position || CH.live?.pending;
   let html = `<h2 class="sec">${esc(inst.id)} · ${esc(CH.tf)}</h2>`;
   if (lv) html += `<div class="state ${CH.live.position ? 'pos' : 'sig'}"><b>${CH.live.position ? (lv.side === 1 ? 'In a long' : 'In a short') : (lv.side === 1 ? 'BUY at next open' : 'SELL at next open')}</b>${lvRows(inst, lv.ep ?? lv.price, lv.sl, lv.tp, CH.live.position ? 'Entry (filled)' : 'Entry ≈')}${lotBox(inst, lv.ep ?? lv.price, lv.sl)}</div>`;
-  else if (CH.ov === 'trend' || CH.ov === 'intraday') { const t = trendState(b, CH.p); html += t ? `<div class="calc"><span>Trend</span><span class="${t.up ? 'pos' : 'neg'}">${t.up ? 'up' : 'down'} (${pct(t.gapPct)} vs EMA 100)</span><span>RSI 14</span><span>${n2(t.rsi, 1)} — needs ${t.up ? '<' : '>'} ${t.rsiNeed}</span></div>` : ''; }
+  else if (CH.ov === 'trend' || CH.ov === 'intraday' || CH.ov === 'intraday1m') { const t = CH.ov === 'intraday1m' ? trendState5(b, CH.p) : trendState(b, CH.p); html += t ? `<div class="calc"><span>Trend</span><span class="${t.up ? 'pos' : 'neg'}">${t.up ? 'up' : 'down'} (${pct(t.gapPct)} vs EMA 100)</span><span>RSI 14</span><span>${n2(t.rsi, 1)} — needs ${t.up ? '<' : '>'} ${t.rsiNeed}</span></div>` : ''; }
   else html += '<div class="muted">No open trade or signal on the latest candle.</div>';
   html += `<p class="note">Price now ${px(last, inst)} (index)${offsetOf(inst) ? ` · ${px(adj(last, inst), inst)} at your broker` : ''}. Levels on the chart are index prices.</p>`;
   $('#chSide').innerHTML = html;
@@ -383,7 +396,8 @@ const BT = { last: null, eq: null };
 $('#btStrat').innerHTML = Object.entries(FX_STRATS).map(([k, s]) => `<option value="${k}">${esc(s.title)}</option>`).join('');
 function renderParams() {
   const id = $('#btStrat').value, S = FX_STRATS[id], saved = (prefs.params || {})[id] || {};
-  $('#btNote').textContent = id === 'intraday' ? 'Claude FX default: in and out the same day. Researched on 5m; see the notes on the Claude FX tab.' : id === 'trend' ? 'Claude FX swing mode: holds up to 24 h. Researched on 5m.' : id === 'sweep' || id === 'orb' ? 'Claude tried this and it failed out-of-sample; here so you can check.' : 'Lab strategy built for crypto, shown for comparison.';
+  if (!S.tfs.includes($('#btTf').value)) $('#btTf').value = S.tf; // e.g. the 1m mode only runs on 1m candles
+  $('#btNote').textContent = id === 'intraday1m' ? 'Claude FX on 1m: the 5m signal entered with a 1m limit. Researched Dec 2025 – Oct 2026 incl. a locked test; see the Claude FX tab.' : id === 'intraday' ? 'Claude FX default: in and out the same day. Researched on 5m; see the notes on the Claude FX tab.' : id === 'trend' ? 'Claude FX swing mode: holds up to 24 h. Researched on 5m.' : id === 'sweep' || id === 'orb' ? 'Claude tried this and it failed out-of-sample; here so you can check.' : 'Lab strategy built for crypto, shown for comparison.';
   $('#btParams').innerHTML = Object.entries(S.params).filter(([, v]) => typeof v === 'number').map(([k, v]) => `<label class="fld sm" title="${esc(S.help?.[k] || '')}"><span>${esc(k)}</span><input type="number" data-p="${esc(k)}" value="${esc(saved[k] ?? v)}" step="any"></label>`).join('');
 }
 function readParams() { const p = {}; $$('#btParams [data-p]').forEach(el => { p[el.dataset.p] = +el.value; }); return p; }
@@ -395,7 +409,9 @@ async function btOne(inst, id, tf, params) {
   return { inst, b, ...simulate(inst, b, id, tf, params) };
 }
 async function runBacktest() {
-  const id = $('#btStrat').value, tf = $('#btTf').value, params = readParams(), insts = btInsts(), btn = $('#btRun');
+  const id = $('#btStrat').value, params = readParams(), insts = btInsts(), btn = $('#btRun');
+  if (!FX_STRATS[id].tfs.includes($('#btTf').value)) { $('#btTf').value = FX_STRATS[id].tf; toast(`${FX_STRATS[id].title} runs on ${FX_STRATS[id].tf} only`); }
+  const tf = $('#btTf').value;
   btn.disabled = true; btn.textContent = 'Running…';
   try {
     progress('#btProg', 0, insts.length);
@@ -435,7 +451,7 @@ $('#btOut').addEventListener('click', e => {
 });
 $('#btRun').addEventListener('click', runBacktest);
 $('#btCompare').addEventListener('click', async () => {
-  const tf = $('#btTf').value, insts = btInsts(), ids = Object.keys(FX_STRATS), btn = $('#btCompare');
+  const tf = $('#btTf').value, insts = btInsts(), ids = Object.keys(FX_STRATS).filter(id => FX_STRATS[id].tfs.includes(tf)), btn = $('#btCompare');
   btn.disabled = true; btn.textContent = 'Comparing…';
   try {
     const jobs = ids.flatMap(id => insts.map(inst => ({ id, inst })));
@@ -445,7 +461,7 @@ $('#btCompare').addEventListener('click', async () => {
       .sort((a, b) => (b.st.n ? b.st.avg : -1e9) - (a.st.n ? a.st.avg : -1e9));
     $('#btOut').innerHTML = `<div class="card"><h2 class="sec">All strategies · ${esc(tf)} · ${esc(insts.map(i => i.id).join(' + '))} <span class="dim" style="font:13px var(--body)">· default parameters · net of costs</span></h2>
       <div class="tblwrap"><table class="tk sm"><thead><tr><th class="l">Strategy</th><th>Trades</th><th>Win</th><th>Avg bp</th><th>t</th><th>Longs</th><th>Shorts</th><th>Max DD</th><th></th></tr></thead><tbody>
-      ${rows.map(r => `<tr><td class="l">${r.id === 'trend' || r.id === 'intraday' ? '✦ <b>' + esc(FX_STRATS[r.id].title) + '</b>' : esc(FX_STRATS[r.id].title)}</td><td>${r.st.n || 0}</td><td>${r.st.n ? Math.round(r.st.win * 100) + '%' : '—'}</td><td class="${cls(r.st.avg)}">${r.st.n ? sgn(r.st.avg, 1) : '—'}</td><td>${r.st.n ? n2(r.st.t, 2) : '—'}</td>
+      ${rows.map(r => `<tr><td class="l">${['trend', 'intraday', 'intraday1m'].includes(r.id) ? '✦ <b>' + esc(FX_STRATS[r.id].title) + '</b>' : esc(FX_STRATS[r.id].title)}</td><td>${r.st.n || 0}</td><td>${r.st.n ? Math.round(r.st.win * 100) + '%' : '—'}</td><td class="${cls(r.st.avg)}">${r.st.n ? sgn(r.st.avg, 1) : '—'}</td><td>${r.st.n ? n2(r.st.t, 2) : '—'}</td>
         <td class="${cls(r.L.avg)}">${r.L.n ? `${sgn(r.L.avg, 0)} × ${r.L.n}` : '—'}</td><td class="${cls(r.S.avg)}">${r.S.n ? `${sgn(r.S.avg, 0)} × ${r.S.n}` : '—'}</td><td class="neg">${r.st.n ? sgn(r.st.maxdd, 0) : '—'}</td><td><button class="btn sm" data-use="${esc(r.id)}">Use</button></td></tr>`).join('')}
       </tbody></table></div><p class="note">Ranked by average net bp per trade on Gate's short history. Check the longs/shorts split: a strategy that only wins on one side is mostly riding the trend of these few weeks.</p></div>`;
   } catch (e) { $('#btOut').innerHTML = `<div class="empty err">Compare failed: ${esc(e.message || e)}</div>`; }
@@ -464,6 +480,13 @@ const RESEARCH = [
   ['Nasdaq · QQQUSDT perp, Apr – Oct 2026', { n: 116, win: .47, avg: 1.5, sum: 178, t: 0.48, L: -1.4, S: 5.8 }, { n: 177, win: .53, avg: 14.2, sum: 2510, t: 2.32 }],
   ['All research samples', { n: 459, win: .52, avg: 3.6, sum: 1641, t: 2.0, L: 2.0, S: 5.9 }, { n: 747, win: .50, avg: 8.4, sum: 6264, t: 2.6 }],
 ];
+// 1m mode (5m signal, 1m limit entry) on the same samples, same costs, limits filled only a full spread through
+const RESEARCH_1M = [
+  ['Gold · XAUUSDT perp, Dec 2025 – Oct 2026', { n: 135, win: .56, avg: 8.0, sum: 1077, t: 2.33, L: 7.0, S: 9.5 }],
+  ['Gold · PAXG spot, 2025', { n: 127, win: .56, avg: 3.2, sum: 411, t: 1.10, L: 2.8, S: 3.9 }],
+  ['Nasdaq · QQQUSDT perp, Apr – Oct 2026', { n: 97, win: .47, avg: 2.8, sum: 272, t: 0.85, L: 2.1, S: 4.0 }],
+  ['All research samples', { n: 359, win: .54, avg: 4.9, sum: 1760, t: 2.6, L: 4.2, S: 6.0 }],
+];
 async function runCheck() {
   if (CK.running) return;
   CK.running = true;
@@ -476,7 +499,7 @@ async function runCheck() {
     await Promise.all(Object.values(INSTR).map(async inst => {
       const raw = await archiveBars(ARCH[inst.id], from, now, (d, t) => { prog[inst.id] = [d, t]; tick(); });
       if (raw.t.length < 5000) throw new Error(`only ${raw.t.length} candles for ${ARCH[inst.id]}`);
-      const b = resample(marketOnly(raw), 5), last = b.c[b.c.length - 1];
+      const m1 = marketOnly(raw), b = resample(m1, 5), last = b.c[b.c.length - 1];
       // the QQQ series stands in for NAS100: convert the NAS100 spread (points) with the NAS100 price, not QQQ's
       const cost = inst.id === 'NAS100' ? brokerCost(inst, nasRef, +$('#spN').value || 0, 0, +$('#slip').value || 0) : brokerCost(inst, last, +$('#spX').value || 0, +$('#cmX').value || 0, +$('#slip').value || 0);
       const tr = {};
@@ -484,6 +507,8 @@ async function runCheck() {
         const S = FX_STRATS[k], res = run(b, S.signals(b, S.params, { tfMin: 5 }), cost);
         tr[k] = res.trades.filter(x => !x.open).map(x => ({ ...x, inst: inst.id, tIn: b.t[x.ei], tOut: b.t[x.xi] + 300, bp: x.net * 1e4 }));
       }
+      const S1 = FX_STRATS.intraday1m, r1 = run(m1, S1.signals(m1, S1.params, { tfMin: 1 }), cost);
+      tr.intraday1m = r1.trades.filter(x => !x.open).map(x => ({ ...x, inst: inst.id, tIn: m1.t[x.ei], tOut: m1.t[x.xi] + 60, bp: x.net * 1e4 }));
       insts[inst.id] = { inst, end: b.t[b.t.length - 1] + 300, start: b.t[0], tr };
     }));
     CK.res = { at: Date.now(), insts };
@@ -508,15 +533,17 @@ function renderCheck() {
     }).join('');
   };
   const research = RESEARCH.map(([label, a, b], i) => `<tr${i === 3 ? ' style="font-weight:600"' : ''}>${i === 0 ? '<td class="l" rowspan="4">Research period<br><span class="dim">Binance archives, 2025 – Oct 2026</span></td>' : ''}<td class="l">${esc(label)}</td>${cells(a, [a.L, a.S])}${swingCells(b)}</tr>`).join('');
-  // plain-language read of the current tactic
-  const say = [], m1 = win(30);
-  for (const [name, id, base] of [['Gold', 'XAUUSD', 4.3], ['Nasdaq', 'NAS100', 1.5]]) {
-    const list = pick(id, 'intraday', m1), st = stats(list);
-    if (!st.n) { say.push(`${name}: no intraday trades in the last month.`); continue; }
+  // plain-language read of a tactic over the last month
+  const verdicts = (k, bases) => { const out = [], m1 = win(30); for (const [name, id, base] of bases) {
+    const list = pick(id, k, m1), st = stats(list);
+    if (!st.n) { out.push(`${name}: no trades in the last month.`); continue; }
     const sd = Math.sqrt(list.reduce((q, x) => q + (x.bp - st.avg) ** 2, 0) / Math.max(1, st.n - 1)), band = 2 * sd / Math.sqrt(st.n);
     const verdict = st.avg < 0 && st.t <= -1.5 ? 'clearly worse than the research — consider pausing it' : st.avg < 0 ? 'negative, but within the noise of so few trades' : st.avg >= base ? 'in line with or better than the research' : 'positive but below the research average';
-    say.push(`${name}: ${st.n} trades last month, ${sgn(st.avg, 1)} bp a trade (research ≈ ${sgn(base, 1)}); with this few trades anything within ±${n2(band, 0)} bp is noise — ${verdict}.`);
-  }
+    out.push(`${name}: ${st.n} trades last month, ${sgn(st.avg, 1)} bp a trade (research ≈ ${sgn(base, 1)}); with this few trades anything within ±${n2(band, 0)} bp is noise — ${verdict}.`);
+  } return out; };
+  const say = verdicts('intraday', [['Gold', 'XAUUSD', 4.3], ['Nasdaq', 'NAS100', 1.5]]), say1 = verdicts('intraday1m', [['Gold', 'XAUUSD', 5.7], ['Nasdaq', 'NAS100', 2.8]]);
+  const one = (label, rows) => rows.map(([name, st, ls], i) => `<tr${i === rows.length - 1 ? ' style="font-weight:600"' : ''}>${i === 0 ? `<td class="l" rowspan="${rows.length}">${label}</td>` : ''}<td class="l">${esc(name)}</td>${cells(st, ls)}</tr>`).join('');
+  const live1 = (label, days) => { const w = win(days); return one(`${esc(label)}<br><span class="dim">${esc(fmtWib(w[0]))} → ${esc(fmtWib(w[1]))}</span>`, [['Gold', 'XAUUSD'], ['Nasdaq', 'NAS100'], ['Both', null]].map(([n, id]) => { const a = pick(id, 'intraday1m', w); return [n, stats(a), [side(a, 1).avg, side(a, -1).avg]]; })); };
   // week by week, current tactic
   const wk = new Map();
   for (const x of pick(null, 'intraday', win(60))) {
@@ -533,6 +560,11 @@ function renderCheck() {
         <tr><th>Trades</th><th>Win</th><th>Avg bp</th><th>Total bp</th><th>t</th><th>Long / short bp</th><th>Trades</th><th>Avg bp</th><th>Total bp</th><th>t</th></tr></thead>
         <tbody>${research}${live('Last 2 months', 60)}${live('Last month', 30)}</tbody></table></div>
       <p class="note">Recent rows: data through ${esc(fmtWib(end))} WIB (the archive is published a day or two late), costs from the Backtest tab (${esc($('#spX').value)} $ gold spread + $${esc($('#cmX').value)}/lot, ${esc($('#spN').value)} pt Nasdaq spread, ${esc($('#slip').value)} bp slippage). Nasdaq here is the QQQ perp, as in the research. The last months overlap the end of the research period, so they are a check-up, not fresh proof. t below ~2 means the average could still be luck.</p></div>
+    <div class="card"><h2 class="sec">1m mode · 5m signal, 1m limit entry</h2>
+      <ul class="say" style="margin-bottom:12px">${say1.map(t => `<li>${esc(t)}</li>`).join('')}</ul>
+      <div class="tblwrap"><table class="tk sm" style="min-width:720px"><thead><tr><th class="l">Period</th><th class="l">Market</th><th>Trades</th><th>Win</th><th>Avg bp</th><th>Total bp</th><th>t</th><th>Long / short bp</th></tr></thead>
+        <tbody>${one('Research period<br><span class="dim">incl. the locked Sep–Oct test</span>', RESEARCH_1M.map(([l, a]) => [l, a, [a.L, a.S]]))}${live1('Last 2 months', 60)}${live1('Last month', 30)}</tbody></table></div>
+      <p class="note">Same 1-minute archive as above, simulated on 1m candles: a limit one 1m-ATR better than the 5m signal close, valid 30 minutes, filled only once price trades a full spread through it.</p></div>
     <div class="grid2" style="margin-top:14px">
       <div class="card"><h2 class="sec">Intraday equity, last 2 months <span class="dim" style="font:13px var(--body)">(cumulative net bp, both markets)</span></h2><div class="chartbox" id="ckEq"></div></div>
       <div class="card"><h2 class="sec">Week by week · intraday</h2><div class="tblwrap"><table class="tk sm" style="min-width:0"><thead><tr><th class="l">Week of</th><th>Gold</th><th>bp</th><th>Nasdaq</th><th>bp</th><th>Total bp</th></tr></thead><tbody>${weeks || '<tr><td class="l" colspan="6">No trades.</td></tr>'}</tbody></table></div></div>
@@ -571,6 +603,17 @@ $('#researchBody').innerHTML = `
     <tr><td>· entries at any hour</td><td colspan="3">+0.2 bp</td></tr>
     <tr><td>· same rule on 1m / 15m</td><td colspan="3"><span class="neg">−1.8</span> / +1.3 bp</td></tr>
   </tbody></table>
+  <p><b>1m (researched again, Oct 2026).</b> The rules above on 1m candles are noise: ≈ 0 bp before costs, −1.6 bp after. Every 1m-native idea failed too: 1m RSI dips turning inside the 5m trend made money at one setting only (neighbours ≈ 0), and no minute-of-day window beat what 91 random windows produce by chance. What works is the 5m signal executed on 1m — a limit one 1m-ATR better than the 5m close, valid 30 minutes, counted as filled only once price trades a full spread through it. Built on data to Aug 2026, then checked once on Sep–Oct 2026, which was locked away until the end:</p>
+  <table><thead><tr><th>1m, net of costs</th><th>Trades</th><th>Avg bp</th><th>t</th></tr></thead><tbody>
+    <tr><td>Old 1m rule (pullback on 1m candles), Sep–Oct test</td><td>254</td><td class="neg">−2.9</td><td>−1.3</td></tr>
+    <tr><td>5m signal, 1m limit entry — development data</td><td>306</td><td class="pos">+4.6</td><td>2.3</td></tr>
+    <tr><td>· same, market entry instead of the limit</td><td>396</td><td>+3.2</td><td>1.7</td></tr>
+    <tr><td>5m signal, 1m limit entry — Sep–Oct test</td><td>53</td><td class="pos">+6.7</td><td>1.3</td></tr>
+    <tr><td>· gold / Nasdaq in the test</td><td colspan="3">+14.6 / −1.5 bp</td></tr>
+    <tr><td>· at 2× costs</td><td colspan="3">+3.7 bp</td></tr>
+    <tr><td>Whole period, all samples</td><td>359</td><td class="pos">+4.9</td><td>2.6</td></tr>
+  </tbody></table>
+  <p>So the 1m mode trades as often as 5m (it is the same signal) but gets a better price; about one limit in five never fills. A tighter 0.4 % stop or a 1-hour hold loses most of it; a 3-hour hold earned more in testing but the 2 hours were fixed before looking. Limit entries on the 5m chart did not survive the test, so 5m stays as it was.</p>
   <p><b>Verdict.</b> Intraday is the better fit for a 5m chart — no overnight swap, both directions — but its edge is a few bp, needs a raw-spread account, depends on trading the London + New York morning only, and the exact settings were picked from ~25 tries. Swing earned more per trade but only from trends. Paper-trade either for a few weeks and compare with these numbers before risking money. The rules and code are in <span class="mono">forex/fx.js</span>.</p>`;
 
 

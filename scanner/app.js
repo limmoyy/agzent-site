@@ -1,6 +1,6 @@
 // /scanner app: passphrase gate + the VPS snapshot (Scanner tab), and live browser tools on Gate.io candles:
 // Scan with Claude, Chart (TradingView Lightweight Charts), Backtest, Capital sim.
-import { STRATEGIES, backtest, run, stats, simulateMoney, REASON, COSTS, TF_MIN } from './lab/engine.js?v=20261027a';
+import { STRATEGIES, backtest, run, stats, simulateMoney, REASON, COSTS, TF_MIN } from './lab/engine.js?v=20261028a';
 import { CLAUDE, claudeParams, sweepHours, claudeSignals, tokenContext, marketRead, scoreSetup, narrative, digitsFor, formingState, formingSay } from './lab/claude.js?v=20261024a';
 import { candles, closed, pool, TF_SEC } from './lab/data.js?v=20261027a';
 import { decryptSnap } from './lab/gate.js?v=20261027a';

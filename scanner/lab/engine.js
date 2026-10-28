@@ -29,6 +29,7 @@ export function run(bars, sig, opt = {}) {
   const maxHold = opt.maxHold ?? sig.maxHold ?? 0, limitBars = Math.max(1, opt.limitBars ?? sig.limitBars ?? 1);
   const reverse = opt.reverse ?? sig.reverse ?? true, start = opt.start ?? 0, end = opt.end ?? n;
   const tp1Frac = sig.tp1Frac ?? 0.5, beOff = sig.beOffset ?? 0;
+  const pen = opt.limPen ?? 0; // a resting limit fills only once price trades this fraction beyond it (spread on CFDs)
   const { o, h, l, c } = bars;
   const le = col(sig, 'le', n, false), se = col(sig, 'se', n, false), lx = col(sig, 'lx', n, false), sx = col(sig, 'sx', n, false);
   const les = col(sig, 'les', n), ses = col(sig, 'ses', n), lel = col(sig, 'lel', n), sel = col(sig, 'sel', n);
@@ -76,7 +77,7 @@ export function run(bars, sig, opt = {}) {
         if (hl) { nw = 1; px = Math.max(o[t], p_les); } else if (hs) { nw = -1; px = Math.min(o[t], p_ses); }
       }
       if (nw === 0 && q_left > 0) {
-        let hl = !isn(q_l) && l[t] < q_l, hs = !isn(q_s) && h[t] > q_s;
+        let hl = !isn(q_l) && l[t] < q_l * (1 - pen), hs = !isn(q_s) && h[t] > q_s * (1 + pen);
         if (hl && hs) { if (o[t] - q_l <= q_s - o[t]) hs = false; else hl = false; }
         if (hl || hs) {
           nw = hl ? 1 : -1; px = hl ? q_l : q_s; limNow = true;

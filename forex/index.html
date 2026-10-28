@@ -258,7 +258,7 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
 
   <h1 class="title">Forex <em>Desk</em></h1>
   <p class="sub">Gold (XAUUSD) and Nasdaq 100 (NAS100) on 1m, 5m and 15m: market clock, the session levels traders watch, Claude's trend-pullback rule with entry / stop / target and lot size, TradingView-style charts and backtests. Prices are Gate.io index candles — the underlying gold and Nasdaq-100 price — so your broker's quote can sit a little off; type your broker's price to shift every level.</p>
-  <div class="warn-banner"><b>Experimental — weak, fragile edge.</b> Claude tested ~200 intraday setups on gold and Nasdaq. Five-minute moves turned out close to unpredictable; the pullback rule here earns a few bp a trade only when held long enough, only with a low spread, and not on 1m. Paper-trade it first.</div>
+  <div class="warn-banner"><b>Experimental — weak, fragile edge.</b> Claude tested ~200 intraday setups on gold and Nasdaq. Five-minute moves turned out close to unpredictable; the pullback rule here earns a few bp a trade only when held long enough and only with a low spread. On 1m it works only as the entry for the 5m signal. Paper-trade it first.</div>
 
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-tab="desk" aria-selected="true"><span class="spark">✦</span>Claude FX</button>
@@ -358,6 +358,6 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="../scanner/vendor/lightweight-charts.standalone.production.js"></script>
-<script type="module" src="app.js?v=20261027c"></script>
+<script type="module" src="app.js?v=20261028a"></script>
 </body>
 </html>
