@@ -243,6 +243,7 @@ pre code{background:none;border:0;padding:0;font-size:inherit}
 .evt{font:700 11px/1 var(--mono);border-radius:6px;padding:4px 7px;display:inline-block}
 .evt.setup{background:rgba(255,200,87,.14);color:var(--warn)} .evt.entry{background:rgba(126,224,138,.14);color:var(--ok)}
 .evt.tp1{background:rgba(142,197,255,.14);color:var(--info)} .evt.exit{background:rgba(224,209,209,.1);color:var(--text)} .evt.cancel{background:rgba(224,209,209,.06);color:var(--dim)}
+.sd{font:700 10px/1 var(--mono);border-radius:4px;padding:2px 4px;margin-left:2px} .sd.l{color:var(--ok);background:rgba(126,224,138,.12)} .sd.s{color:var(--bad);background:rgba(255,120,120,.12)}
 .docs h3{font-size:15px;margin:18px 0 6px}
 .docs p{color:var(--muted);font-size:14px;margin:6px 0}
 .docs table.tk{min-width:560px}
@@ -274,7 +275,7 @@ pre code{background:none;border:0;padding:0;font-size:inherit}
   </header>
 
   <h1 class="title">Signal <em>Alerts</em></h1>
-  <p class="sub">Claude's <b>Flush &amp; Reclaim 1h</b> — the crypto strategy on the scanner page — runs on a server every hour and sends each step of every trade to Telegram and to webhooks: <b>setup → filled → TP1 → closed</b>. Use the alerts to trade by hand, or point the webhook at an auto-trade platform or your own bot.</p>
+  <p class="sub">Claude's <b>Flush &amp; Reclaim 1h</b> — the crypto strategy on the scanner page — runs on a server every hour and sends each step of every trade to Telegram and to webhooks: <b>setup → filled → TP1 → closed</b>. Longs on every token (an absorbed flush); shorts only on 18 large caps, after an extreme squeeze gets sold. Use the alerts to trade by hand, or point the webhook at an auto-trade platform or your own bot.</p>
   <div class="warn-banner"><b>Paper signals, research only.</b> Fills are what the strategy's own simulation on closed 1h Gate.io candles says happened; a real exchange can differ. On Binance 2022–2026 the strategy was barely positive and varied a lot by token and year. Start with a demo account and a small size; nothing here is financial advice.</div>
 
   <div class="stats" id="stats"></div>
@@ -310,7 +311,7 @@ pre code{background:none;border:0;padding:0;font-size:inherit}
       <div>
         <h3>What to do on each event</h3>
         <div class="tblwrap"><table class="tk sm"><thead><tr><th class="l">event</th><th class="l">when</th><th class="l">an auto-trader should</th></tr></thead><tbody>
-          <tr><td class="l"><span class="evt setup">setup</span></td><td class="l">a flush candle closed</td><td class="l">place a post-only <b>buy limit</b> at <code>order.price</code> until <code>order.valid_until</code> (3 h)</td></tr>
+          <tr><td class="l"><span class="evt setup">setup</span></td><td class="l">a flush (long) or squeeze (short) candle closed</td><td class="l">place a post-only limit — <b>buy</b> when <code>side</code> is <code>long</code>, <b>sell</b> when <code>short</code> (<code>{{buy_sell}}</code>) — at <code>order.price</code> until <code>order.valid_until</code> (3 h)</td></tr>
           <tr><td class="l"><span class="evt entry">entry</span></td><td class="l">the limit filled</td><td class="l">set the stop <code>stop_loss</code>, TP1 50 % and TP2 50 %</td></tr>
           <tr><td class="l"><span class="evt tp1">tp1</span></td><td class="l">TP1 reached</td><td class="l">close 50 %, move the stop to <code>new_stop_loss</code> (break-even)</td></tr>
           <tr><td class="l"><span class="evt exit">exit</span></td><td class="l">the trade ended</td><td class="l">close what is left (TP2, stop, break-even or the 24 h time stop)</td></tr>
@@ -358,6 +359,6 @@ def verify(headers, raw: bytes, secret: str) -&gt; bool:
   <p class="note" style="margin:18px 0 40px">Signals come from <code>signal-hook</code> on the Agzent server: Gate.io USDT-perp 1h candles, checked ~75 s after every hourly close, same strategy code as the <a href="/scanner/">scanner</a>.</p>
 </div>
 </div>
-<script type="module" src="app.js?v=20261029a"></script>
+<script type="module" src="app.js?v=20261030a"></script>
 </body>
 </html>

@@ -1,11 +1,11 @@
 // /forex app: passphrase gate (same as /scanner), the Claude FX desk for XAUUSD + NAS100, chart and backtest.
 // Everything runs in the browser on Gate.io index candles; closed-market candles are dropped (see fx.js).
-import { run, stats, REASON, TF_MIN } from '../scanner/lab/engine.js?v=20261028a';
+import { run, stats, REASON, TF_MIN } from '../scanner/lab/engine.js?v=20261030a';
 import { candles, pool, TF_SEC } from '../scanner/lab/data.js?v=20261027a';
 import { decryptSnap } from '../scanner/lab/gate.js?v=20261027a';
 import { makeChart, makeLineChart, toChartTime } from '../scanner/lab/chart.js?v=20261028b';
 import { ema } from '../scanner/lab/ind.js';
-import { INSTR, FX_STRATS, marketState, marketOnly, sessionLevels, trendState, trendState5, brokerCost, atET, etClock, resample } from './fx.js?v=20261028a';
+import { INSTR, FX_STRATS, marketState, marketOnly, sessionLevels, trendState, trendState5, brokerCost, atET, etClock, resample } from './fx.js?v=20261030a';
 import { archiveBars } from './archive.js?v=20261027c';
 
 const $ = s => document.querySelector(s);

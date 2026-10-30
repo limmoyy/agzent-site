@@ -1,7 +1,7 @@
 // /scanner app: passphrase gate + the VPS snapshot (Scanner tab), and live browser tools on Gate.io candles:
 // Scan with Claude, Chart (TradingView Lightweight Charts), Backtest, Capital sim.
-import { STRATEGIES, backtest, run, stats, simulateMoney, REASON, COSTS, TF_MIN } from './lab/engine.js?v=20261028a';
-import { CLAUDE, claudeParams, sweepHours, claudeSignals, tokenContext, marketRead, scoreSetup, narrative, digitsFor, formingState, formingSay } from './lab/claude.js?v=20261024a';
+import { STRATEGIES, backtest, run, stats, simulateMoney, REASON, COSTS, TF_MIN } from './lab/engine.js?v=20261030a';
+import { CLAUDE, claudeParams, sweepHours, claudeSignals, tokenContext, marketRead, scoreSetup, narrative, digitsFor, formingState, formingSay, shortsOn } from './lab/claude.js?v=20261030a';
 import { candles, closed, pool, TF_SEC } from './lab/data.js?v=20261027a';
 import { decryptSnap } from './lab/gate.js?v=20261027a';
 import { makeChart, makeLineChart, toChartTime } from './lab/chart.js?v=20261028b';
@@ -217,11 +217,11 @@ const tfLabel = mode => mode === 'both' ? '1h + 15m' : mode;
 const barsFor = (tf, depth) => tf === '1h' ? depth : Math.min(9990, Math.round(depth * 3600 / tfSec(tf)));
 /** One timeframe of one token: signals, simulated trades, live order/position and the forming candle. */
 function analyzeTf(sym, raw, tf, ctx) {
-  const p = claudeParams(tf), sig = maskForming(claudeSignals(raw, p, { tfMin: TF_MIN[tf] }), raw);
+  const p = claudeParams(tf), sig = maskForming(claudeSignals(raw, p, { tfMin: TF_MIN[tf], sym }), raw);
   const res = run(raw, sig, {});
   const trades = flatTrades(sym, raw, res.trades, tf);
   const live = res.live, why = live.pending ? sig.why[live.pending.sigBar] : live.position ? sig.why[live.position.sigBar] : null;
-  const forming = formingState(raw, p, Date.now() / 1000, tfSec(tf));
+  const forming = formingState(raw, p, Date.now() / 1000, tfSec(tf), sym);
   return { sym, tf, raw, ctx, trades, st: stats(trades), live, why, forming, state: live.position ? 'position' : live.pending ? 'pending' : 'none' };
 }
 /** Token context always comes from 1h candles (trend, RSI, 24h low, BTC regime); setups from each chosen timeframe. */
@@ -255,7 +255,7 @@ async function claudeScan({ auto = false } = {}) {
     for (const r of rows) {
       const f = r.forming;
       r.scored = r.state !== 'none' ? scoreSetup(r.live.pending, r.why, r.ctx, r.st, byTf[r.tf], mkt) : null;
-      r.say = narrative(r.sym, { ...r.live, why: r.why }, r.ctx, mkt, { tf: r.tf, lo: f?.lo, loH: f?.loH, atr: f?.atr });
+      r.say = narrative(r.sym, { ...r.live, why: r.why }, r.ctx, mkt, { tf: r.tf, lo: f?.lo, hi: f?.hi, loH: f?.loH, atr: f?.atr });
     }
     CL.res = { at: Date.now(), depth, mode, tfs, ok, rows, failed, mkt, global, byTf, all };
     CL.nextAt = nextClose(Math.min(...tfs.map(tfSec))) + RESCAN_DELAY;
@@ -285,7 +285,7 @@ function announceNew(rows) {
   if (!fresh.length || !prefs.cNotify || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   for (const k of fresh.slice(0, 3)) {
     const x = rows.find(o => key(o) === k), p = x.live.pending;
-    try { new Notification(`✦ Claude ${x.tf}: ${short(x.sym)} buy limit ${px(p.price)}`, { body: `Stop ${px(p.sl, p.price)} · TP1 ${px(p.tp1, p.price)} · TP2 ${px(p.tp, p.price)}`, tag: 'claude-' + k }); } catch (_) { }
+    try { new Notification(`✦ Claude ${x.tf}: ${short(x.sym)} ${p.side === -1 ? 'sell' : 'buy'} limit ${px(p.price)}`, { body: `Stop ${px(p.sl, p.price)} · TP1 ${px(p.tp1, p.price)} · TP2 ${px(p.tp, p.price)}`, tag: 'claude-' + k }); } catch (_) { }
   }
 }
 const countdown = s => s <= 0 ? 'now' : s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 3600)}h ${Math.floor(s % 3600 / 60)}m`;
@@ -324,6 +324,8 @@ function levelRows(x, ref) {
   </div>`;
 }
 const TIER = { arming: ['ARMING', 'If the candle closes like this, a buy limit arms'], sweeping: ['SWEEPING', 'Broke the low — needs to close back up'], near: ['NEAR LOW', 'One push from a sweep'] };
+const TIER_S = { arming: ['ARMING · SHORT', 'If the candle closes like this, a sell limit arms'], sweeping: ['SQUEEZING', 'Broke the high — needs an extreme candle that closes back down'] };
+const tierOf = f => (f.side === -1 ? TIER_S : TIER)[f.tier];
 const tfPill = tf => `<span class="pill tfp">${esc(tf)}</span>`;
 
 // ── "Analisa di Claude": opens a new claude.ai chat pre-filled with this setup (runs on the viewer's own
@@ -334,20 +336,21 @@ function claudePrompt(x) {
   const P = v => px(v, ref);
   const L = [];
   L.push(`Kamu analis trading crypto. Tolong review setup ini dari scanner gw (strategi "Flush & Reclaim" yang kamu rancang). Jawab dalam bahasa Indonesia santai, singkat, poin-poin.`);
-  L.push(`\nATURAN STRATEGI (${x.tf}): long only. Candle flush range ≥ ${p.rng_atr}×ATR14, volume ≥ ${p.vol_mult}× median 72 candle, menembus low ${sweepH(x.tf)} jam terakhir, lower wick ≥ ${Math.round(p.wick * 100)}%. Entry limit di low + ${p.ent_frac}×range (berlaku ${p.limit_bars} candle), stop = low − ${p.buf}×ATR, skip kalau stop < ${p.min_risk_bp} bp atau > ${p.max_sl} ATR. TP1 ${p.tp1_r}R (setengah posisi, lalu stop ke break-even), TP2 ${p.tp2_r}R, time stop ${p.max_hold_h} jam. Fee taker 5 bp, maker 2 bp.`);
-  L.push(`Riset: edge cuma kelihatan di flush besar (stop ≥ 1,5%); flush kecil impas setelah fee; gagal di BTC/ETH; 2022 (bear) rugi.${x.tf === '15m' ? ' Versi 15m paling lemah (t ≈ 0,7).' : ''}`);
+  const sh = shortsOn(p, x.sym), S = (lv?.side ?? f?.side) === -1;
+  L.push(`\nATURAN STRATEGI (${x.tf}): LONG — candle flush range ≥ ${p.rng_atr}×ATR14, volume ≥ ${p.vol_mult}× median 72 candle, menembus low ${sweepH(x.tf)} jam terakhir, lower wick ≥ ${Math.round(p.wick * 100)}%. Entry limit di low + ${p.ent_frac}×range (berlaku ${p.limit_bars} candle), stop = low − ${p.buf}×ATR, skip kalau stop < ${p.min_risk_bp} bp atau > ${p.max_sl} ATR. TP1 ${p.tp1_r}R (setengah posisi, lalu stop ke break-even), TP2 ${p.tp2_r}R, time stop ${p.max_hold_h} jam. Fee taker 5 bp, maker 2 bp.${sh ? ` SHORT (cuma 18 large cap, 1h) — kebalikannya tapi cuma squeeze ekstrem: range ≥ ${p.s_rng_atr}×ATR, volume ≥ ${p.s_vol_mult}×, menembus high ${sweepH(x.tf)} jam, upper wick ≥ ${Math.round(p.s_wick * 100)}%; sell limit di high − ${p.ent_frac}×range, stop = high + ${p.buf}×ATR, TP/time stop sama.` : ' Token ini long only.'}`);
+  L.push(`Riset: long — edge cuma kelihatan di flush besar (stop ≥ 1,5%); flush kecil impas setelah fee; gagal di BTC/ETH; 2022 (bear) rugi.${sh ? ' Short — Bybit 2023–26 di 18 large cap +41 bp/trade (240 trade, t 2,6), tapi 2026 cuma impas; Binance 2022 +20 bp (30 trade); di token baru squeeze-nya lanjut terus, makanya nggak dipakai di sana.' : ''}${x.tf === '15m' ? ' Versi 15m paling lemah (t ≈ 0,7).' : ''}`);
   L.push(`\nSETUP: ${short(x.sym)}USDT perp, timeframe ${x.tf}, waktu ${fmtWib(Date.now() / 1000)} WIB.`);
-  if (x.live.position) L.push(`Status: SUDAH MASUK long di ${P(lv.ep)}${lv.tp1Hit ? ', TP1 sudah kena, stop di break-even' : ''}. Stop ${P(lv.sl)}, TP1 ${P(lv.tp1)}, TP2 ${P(lv.tp)}.`);
-  else if (x.live.pending) L.push(`Status: BUY LIMIT aktif di ${P(lv.price)}, stop ${P(lv.sl)}, TP1 ${P(lv.tp1)}, TP2 ${P(lv.tp)}. Risk ${n2(Math.abs(lv.price - lv.sl) / lv.price * 100, 2)}%. Berlaku ${lv.barsLeft} candle lagi.`);
+  if (x.live.position) L.push(`Status: SUDAH MASUK ${S ? 'short' : 'long'} di ${P(lv.ep)}${lv.tp1Hit ? ', TP1 sudah kena, stop di break-even' : ''}. Stop ${P(lv.sl)}, TP1 ${P(lv.tp1)}, TP2 ${P(lv.tp)}.`);
+  else if (x.live.pending) L.push(`Status: ${S ? 'SELL' : 'BUY'} LIMIT aktif di ${P(lv.price)}, stop ${P(lv.sl)}, TP1 ${P(lv.tp1)}, TP2 ${P(lv.tp)}. Risk ${n2(Math.abs(lv.price - lv.sl) / lv.price * 100, 2)}%. Berlaku ${lv.barsLeft} candle lagi.`);
   else if (f?.tier) L.push(`Status: candle ${x.tf} yang masih jalan sedang "${f.tier}" (${f.passed}/5 aturan lolos, ${Math.round(f.elapsed * f.tfMin)} dari ${f.tfMin} menit). ${f.checks.map(k => `${k.label}: ${k.now} (perlu ${k.need})${k.ok ? ' ✓' : ''}`).join('; ')}.${f.tier === 'arming' ? ` Kalau tutup begini: entry ${P(f.would.entry)}, stop ${P(f.would.sl)}, TP1 ${P(f.would.tp1)}, TP2 ${P(f.would.tp)}.` : ''}`);
-  if (w) L.push(`Candle flush: range ${n2(w.rngAtr, 2)}× ATR, volume ${n2(w.volX, 2)}× normal, lower wick ${Math.round(w.wick * 100)}%, menembus low ${P(w.sweep)}, risk ${n2(w.riskBp, 0)} bp.`);
+  if (w) L.push(`Candle ${w.side === -1 ? 'squeeze' : 'flush'}: range ${n2(w.rngAtr, 2)}× ATR, volume ${n2(w.volX, 2)}× normal, ${w.side === -1 ? 'upper' : 'lower'} wick ${Math.round(w.wick * 100)}%, menembus ${w.side === -1 ? 'high' : 'low'} ${P(w.sweep)}, risk ${n2(w.riskBp, 0)} bp.`);
   L.push(`Harga sekarang ${P(c.price)}. Konteks 1h: trend ${c.trend}, RSI ${n2(c.rsi, 0)}, ATR ${n2(c.atrPct, 2)}%/jam, 24h ${pct(c.ret24)}, 7d vs BTC ${pct(c.rs)}, ${n2(c.distLo24, 1)}% di atas low 24h ${P(c.lo24)}.`);
   if (m) L.push(`Pasar: BTC ${m.btcRegime === 'bull' ? 'di atas' : 'di bawah'} EMA ~25 hari, BTC 24h ${pct(m.btcRet24)}, 7d ${pct(m.btcRet168)}; ${Math.round(m.breadth * 100)}% dari ${m.tokens} token di atas EMA200 1h; ${m.stressed} token turun > 5% dalam 24h.`);
   L.push(`Track record strategi ini di ${short(x.sym)} (${x.tf}): ${x.st.n ? `${x.st.n} trade, rata-rata ${sgn(x.st.avg, 0)} bp, win ${Math.round(x.st.win * 100)}%` : 'belum ada trade'}. Semua token: ${CL.res?.byTf[x.tf]?.n || 0} trade, ${sgn(CL.res?.byTf[x.tf]?.avg, 0)} bp.`);
   const k0 = Math.max(0, b.t.length - 24), rows = [];
   for (let i = k0; i < b.t.length; i++) rows.push(`${fmtWib(b.t[i]).split(', ')[1] || fmtWib(b.t[i])} ${P(b.o[i])} ${P(b.h[i])} ${P(b.l[i])} ${P(b.c[i])} ${vol(b.v[i])}`);
   L.push(`\n${rows.length} candle ${x.tf} terakhir (jam WIB, O H L C volume USDT${b.forming ? ', baris terakhir masih jalan' : ''}):\n${rows.join('\n')}`);
-  L.push(`\nYANG GW MAU:\n1. Verdict: AMBIL / SKIP / AMBIL SIZE KECIL, plus alasan utamanya.\n2. Kualitas flush-nya: kapitulasi beneran, atau cuma turun pelan?\n3. Kalau bisa search web: ada berita/unlock/listing/hack soal ${short(x.sym)} di 24 jam terakhir yang bikin flush ini bukan sekadar likuidasi?\n4. Apa yang bikin setup ini batal sebelum entry kena?\n5. Level entry/stop/TP perlu diubah? Jangan ngarang angka, pakai data di atas.`);
+  L.push(`\nYANG GW MAU:\n1. Verdict: AMBIL / SKIP / AMBIL SIZE KECIL, plus alasan utamanya.\n2. ${S ? 'Kualitas squeeze-nya: blow-off beneran (short kejepit lalu dijual), atau awal tren naik?' : 'Kualitas flush-nya: kapitulasi beneran, atau cuma turun pelan?'}\n3. Kalau bisa search web: ada berita/unlock/listing/hack soal ${short(x.sym)} di 24 jam terakhir yang bikin ${S ? 'squeeze' : 'flush'} ini bukan sekadar likuidasi?\n4. Apa yang bikin setup ini batal sebelum entry kena?\n5. Level entry/stop/TP perlu diubah? Jangan ngarang angka, pakai data di atas.`);
   return L.join('\n');
 }
 const askHref = x => 'https://claude.ai/new?q=' + encodeURIComponent(claudePrompt(x));
@@ -366,7 +369,7 @@ function formingSection(r) {
   const decide = f => f.closesAt + RESCAN_DELAY;
   const cd = f => `<span class="cdwrap">re-scan in <b data-until="${decide(f)}" data-fmt="min">${minutes(Math.round(decide(f) - Date.now() / 1000))}</b></span>`;
   const cards = hot.map(x => {
-    const f = x.forming, [label, hint] = TIER[f.tier];
+    const f = x.forming, [label, hint] = tierOf(f);
     return `<div class="setup forming tier-${f.tier}">
       <div class="hd"><b>${esc(short(x.sym))} ${tfPill(x.tf)}</b><span class="pill st-${f.tier}">${label}</span><span class="score" title="Rules passed on the open candle">${f.passed}/5</span></div>
       <div class="dim" style="font-size:12px">${esc(hint)} · ${esc(x.tf)} candle ${Math.round(f.elapsed * f.tfMin)} of ${f.tfMin} min</div>
@@ -410,7 +413,7 @@ function renderClaude() {
     const score = x.scored?.score ?? 0;
     const until = x.live.pending ? fmtWib(x.raw.t[x.live.pending.sigBar] + (claudeParams(x.tf).limit_bars + 1) * tfSec(x.tf)) : '';
     return `<div class="setup ${isPos ? 'position' : ''}">
-      <div class="hd"><b>${esc(short(x.sym))} ${tfPill(x.tf)}</b><span class="pill ${isPos ? 'st-position' : 'st-pending'}">${isPos ? 'IN TRADE · LONG' : 'BUY LIMIT'}</span><span class="score ${score >= 65 ? 'hi' : ''}" title="Ranking aid, not a probability">${score}</span></div>
+      <div class="hd"><b>${esc(short(x.sym))} ${tfPill(x.tf)}</b><span class="pill ${isPos ? 'st-position' : 'st-pending'}">${isPos ? `IN TRADE · ${s.side === -1 ? 'SHORT' : 'LONG'}` : s.side === -1 ? 'SELL LIMIT' : 'BUY LIMIT'}</span><span class="score ${score >= 65 ? 'hi' : ''}" title="Ranking aid, not a probability">${score}</span></div>
       ${levelRows(isPos ? { ...s, price: s.ep } : s, ref)}
       <div class="tags"><span class="tag">risk ${n2(risk, 2)}%</span><span class="tag">now ${px(x.ctx.price, ref)}</span>${until ? `<span class="tag">limit valid to ${esc(until)} WIB</span>` : `<span class="tag">since ${esc(fmtWib(x.raw.t[s.ei]))}</span>`}<span class="tag">${esc(x.tf)} record ${x.st.n ? `${x.st.n} × ${sgn(x.st.avg, 0)} bp` : 'none'}</span></div>
       <ul class="say">${x.say.map(t => `<li>${esc(t)}</li>`).join('')}${(x.scored?.notes || []).map(t => `<li class="dim">${esc(t)}</li>`).join('')}</ul>
@@ -553,12 +556,12 @@ function computeOverlay(ov) {
   // the Backtest tab's edited parameters apply when it shows the same strategy and timeframe
   const params = ov === $('#btStrat').value && (ov !== 'claude' || $('#btTf').value === tf) ? readParams() : {};
   const p = { ...stratParams(ov, tf), ...params };
-  const sig = maskForming(S.signals(b, p, { tfMin: TF_MIN[tf] || 60 }), b);
+  const sig = maskForming(S.signals(b, p, { tfMin: TF_MIN[tf] || 60, sym: CH.sym }), b);
   const res = run(b, sig, {});
   CH.trades = flatTrades(CH.sym, b, res.trades, tf);
   CH.live = res.live;
   CH.liveWhy = ov === 'claude' && res.live.pending ? sig.why[res.live.pending.sigBar] : ov === 'claude' && res.live.position ? sig.why[res.live.position.sigBar] : null;
-  CH.forming = ov === 'claude' && !res.live.pending && !res.live.position ? formingState(b, p, Date.now() / 1000, tfSec(tf)) : null;
+  CH.forming = ov === 'claude' && !res.live.pending && !res.live.position ? formingState(b, p, Date.now() / 1000, tfSec(tf), CH.sym) : null;
 }
 function barTime(t) { const sec = tfSec(CH.tf); return Math.floor(t / sec) * sec; }
 function drawOverlay() {
@@ -633,7 +636,7 @@ function renderChartSide() {
       : `<div class="muted">${esc(short(CH.sym))} is not in the VPS scan.</div>`);
   } else if (lv) {
     const en = lv.price ?? lv.ep, isPos = !!CH.live.position;
-    html = `<h2 class="sec">${CH.ovName === 'claude' ? '✦ Claude' : esc(CH.ovName)} · ${isPos ? 'in trade' : (lv.kind === 'market' ? 'enter at next open' : lv.kind === 'stop' ? 'stop entry' : 'buy limit')}</h2>
+    html = `<h2 class="sec">${CH.ovName === 'claude' ? '✦ Claude' : esc(CH.ovName)} · ${isPos ? 'in trade' : (lv.kind === 'market' ? 'enter at next open' : lv.kind === 'stop' ? 'stop entry' : lv.side === -1 ? 'sell limit' : 'buy limit')}</h2>
       ${levelRows({ ...lv, price: en, tp1: lv.tp1 === lv.tp1 ? lv.tp1 : NaN }, en)}
       <div class="tags" style="margin-top:8px"><span class="tag">price now ${px(last, en)}</span><span class="tag">${lv.side === 1 ? 'long' : 'short'}</span>${isPos ? `<span class="tag">${sgn((last / en - 1) * 100 * lv.side, 2)}% open P&L</span>` : `<span class="tag">valid ${lv.barsLeft} more bar${lv.barsLeft > 1 ? 's' : ''}</span>`}</div>
       ${CH.ovName === 'claude' ? `<ul class="say" style="margin-top:8px">${narrative(CH.sym, { ...CH.live, why: CH.liveWhy }, { ...tokenContext(closed(b), null), price: last }, CL.res?.mkt, { tf: CH.tf, loH: sweepH(CH.tf) }).map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}
@@ -643,8 +646,8 @@ function renderChartSide() {
   } else {
     const ctx = tokenContext(closed(b), null); ctx.price = last;
     const fs = CH.forming, until = (fs?.closesAt ?? nextClose(tfSec(CH.tf))) + RESCAN_DELAY;
-    html = `<h2 class="sec">${CH.ovName === 'claude' ? `✦ Claude ${esc(CH.tf)}` : esc(CH.ovName)} · ${fs?.tier ? esc(TIER[fs.tier][0].toLowerCase()) : 'no live setup'}</h2>` +
-      (CH.ovName === 'claude' ? (fs?.tier ? `${fs.checks ? checkRows(fs) : ''}<p class="say" style="margin-top:8px">${esc(formingSay(CH.sym, fs))}</p>` : `<ul class="say">${narrative(CH.sym, {}, ctx, CL.res?.mkt, { tf: CH.tf, lo: fs?.lo, loH: fs?.loH, atr: fs?.atr }).map(t => `<li>${esc(t)}</li>`).join('')}</ul>`)
+    html = `<h2 class="sec">${CH.ovName === 'claude' ? `✦ Claude ${esc(CH.tf)}` : esc(CH.ovName)} · ${fs?.tier ? esc(tierOf(fs)[0].toLowerCase()) : 'no live setup'}</h2>` +
+      (CH.ovName === 'claude' ? (fs?.tier ? `${fs.checks ? checkRows(fs) : ''}<p class="say" style="margin-top:8px">${esc(formingSay(CH.sym, fs))}</p>` : `<ul class="say">${narrative(CH.sym, {}, ctx, CL.res?.mkt, { tf: CH.tf, lo: fs?.lo, hi: fs?.hi, loH: fs?.loH, atr: fs?.atr }).map(t => `<li>${esc(t)}</li>`).join('')}</ul>`)
         + `<div class="tags" style="margin-top:8px"><span class="tag cdwrap">⏱ candle closes ${esc(fmtWib(until - RESCAN_DELAY))} WIB · reload in <b data-until="${until}" data-fmt="min">${minutes(Math.round(until - Date.now() / 1000))}</b></span></div>`
         : '<div class="muted">No open position or pending order on the latest candle.</div>') +
       '<p class="note">Click a past trade on the right/below to draw its entry, stop and target box.</p>';
@@ -708,7 +711,7 @@ function openBacktest(sym, strat, tf) {
 async function runOne(sym, id, tf, depth, params, cost) {
   const b = await candles(sym, tf, depth, 120e3), S = STRATEGIES[id];
   const p = { ...stratParams(id, tf), ...params };
-  const sig = maskForming(S.signals(b, p, { tfMin: TF_MIN[tf] || 60 }), b);
+  const sig = maskForming(S.signals(b, p, { tfMin: TF_MIN[tf] || 60, sym }), b);
   const res = run(b, sig, cost);
   return { sym, b, trades: flatTrades(sym, b, res.trades, tf), live: res.live };
 }
@@ -848,7 +851,7 @@ $('#researchBody').innerHTML = `
     <tr><td>30 tokens, 2nd half (untouched while choosing)</td><td>356</td><td class="pos">+25</td><td>56%</td><td>1.9</td></tr>
     <tr><td>Holdout BTC 2021-09 → 2025-08 (Binance)</td><td>146</td><td>+1</td><td>52%</td><td>0.1</td></tr>
     <tr><td>Holdout ETH 2021-09 → 2025-08 (Binance)</td><td>149</td><td class="neg">−22</td><td>44%</td><td>−1.9</td></tr>
-    <tr><td>Mirrored short (squeeze fade), 2nd half</td><td>127</td><td class="neg">−135</td><td>46%</td><td>−3.1</td></tr>
+    <tr><td>Mirrored short (any squeeze, long thresholds), 2nd half</td><td>127</td><td class="neg">−135</td><td>46%</td><td>−3.1</td></tr>
   </tbody></table>
   <p><b>Longer check (added later).</b> Binance perps for the same 30 tokens (where listed), Jan 2022 → Aug 2025 — years never used to pick the rules. All flushes together barely break even; the big ones (stop ≥ 150 bp) hold up. The same Sep 2025 → Sep 2026 window is +15 bp on Binance candles vs +34 bp on Gate's, so the size of the edge depends on the data feed.</p>
   <table><thead><tr><th>1h, Binance, 2022-01 → 2025-08</th><th>Trades</th><th>Avg bp</th><th>t</th></tr></thead><tbody>
@@ -864,7 +867,15 @@ $('#researchBody').innerHTML = `
     <tr><td>Same 1h rules on 15m, 2024 → Sep 2026</td><td>5242</td><td class="neg">−7</td><td>−3.4</td></tr>
   </tbody></table>
   <p>It fires about 2–3 times a week across 30 tokens. Treat 15m as the weaker of the two: the variant was picked after looking at both halves, and t ≈ 0.7 is well inside luck.</p>
-  <p><b>What failed on the way</b> (so you don't have to retry them): trend pullbacks to EMA 20 (−10 bp both halves), regime-filtered impulse follow (≈ 0), short squeezes even with a BTC bear filter (−135 bp out-of-sample); on 15m: a 1h-trend filter, quicker exits (TP 1.5R, 4h), longer sweep windows — all negative out-of-sample.</p>
+  <p><b>Short side (added Oct 2026).</b> The plain mirror — fade any squeeze with the long thresholds — loses everywhere (Bybit 2023–26 −12 bp over 2234 trades, Binance 2022 −9 bp). Only <b>extreme</b> squeezes revert: a 1h candle that takes out the 24h high with range ≥ 2 ATR, volume ≥ 2× and an upper wick ≥ 70%. Sell limit in the wick, stop over it, the same exits as the long. It runs on 18 large caps only (BTC, ETH, SOL, XRP, BNB, DOGE, ADA, LINK, AVAX, LTC, BCH, NEAR, SUI, AAVE, UNI, FIL, PEPE, ZEC): on newer listings squeezes keep going. Tested on Bybit's own candles with Bybit fees.</p>
+  <table><thead><tr><th>Short, 1h, 18 large caps</th><th>Trades</th><th>Avg bp</th><th>Win</th><th>t</th></tr></thead><tbody>
+    <tr><td>Bybit 2023-01 → 2026-10</td><td>240</td><td class="pos">+41</td><td>57%</td><td>2.6</td></tr>
+    <tr><td>· by year: 2023 / 2024 / 2025 / 2026</td><td colspan="4">+46 / +41 / +61 / +1 bp</td></tr>
+    <tr><td>Holdout Binance 2022 (bear year, never used to choose)</td><td>30</td><td class="pos">+20</td><td>60%</td><td>0.6</td></tr>
+    <tr><td>Same rules on the 9 newer tokens, 2025–26</td><td colspan="4" class="neg">−40 to −170 bp per year — why they are left out</td></tr>
+  </tbody></table>
+  <p>All 27 neighbouring settings (range 2–3 ATR × volume 2–3× × wick 60–70%) were positive both on 2023–24 and on 2025–26, so it is a plateau, not one lucky setting. Caveats: about 5 trades a month across the 18, 2026 is flat so far, and per token the samples are 8–21 trades (13 of 18 positive — too few to pick tokens by). Adding it left every long trade unchanged.</p>
+  <p><b>What failed on the way</b> (so you don't have to retry them): trend pullbacks to EMA 20 (−10 bp both halves), regime-filtered impulse follow (≈ 0), fading ordinary squeezes even with a BTC bear filter (−135 bp out-of-sample), shorting a failed flush — the break of a long's stop — (−60 to −120 bp in every year: broken flush lows snap back too); on 15m: a 1h-trend filter, quicker exits (TP 1.5R, 4h), longer sweep windows — all negative out-of-sample.</p>
   <p><b>Honest verdict.</b> Positive on alts in the year it was built on, but the BTC/ETH holdout fails, the 2022–2025 alt holdout is flat unless you keep only big flushes, and October 2025's crash supplies about a third of the 2025–26 profit. 2022's bear market lost on every variant. Capital sim on the whole year with 1% risk per trade and 3 slots: +33% with a −26% drawdown; with 30% margin × 50x the account blows up. Treat it as a paper-trading hypothesis. The engine, rules and numbers are all in <span class="mono">scanner/lab/</span>.</p>`;
 
 // ── boot ─────────────────────────────────────────────────────────────────────────────────────

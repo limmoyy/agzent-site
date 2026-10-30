@@ -261,7 +261,7 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
       <div>
         <div class="claude-badge">✦ CLAUDE · FLUSH &amp; RECLAIM</div>
         <h2>Scan with Claude</h2>
-        <p>Claude's own strategy, run live on every scanner token: find liquidation flushes that got bought back (on 1h, 15m, or both), then place a limit in the wick with the stop under it, half off at 1R and the rest at 2.5R. Each setup comes with its track record on that token.</p>
+        <p>Claude's own strategy, run live on every scanner token: find liquidation flushes that got bought back (on 1h, 15m, or both), then place a limit in the wick with the stop under it, half off at 1R and the rest at 2.5R. On 1h it also shorts extreme squeezes that got sold, on 18 large caps. Each setup comes with its track record on that token.</p>
       </div>
       <div class="ctrls" style="margin:0">
         <div class="fld"><span>Timeframe</span><div class="seg" id="cTfSeg" role="group" aria-label="Timeframe"><button type="button" data-v="1h" aria-pressed="true">1h</button><button type="button" data-v="15m" aria-pressed="false">15m</button><button type="button" data-v="both" aria-pressed="false">1h + 15m</button></div></div>
@@ -352,6 +352,6 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
 </div>
 <div class="toast" id="toast" role="status"></div>
 <script src="vendor/lightweight-charts.standalone.production.js"></script>
-<script type="module" src="app.js?v=20261028b"></script>
+<script type="module" src="app.js?v=20261030a"></script>
 </body>
 </html>

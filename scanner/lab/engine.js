@@ -372,7 +372,7 @@ const withLimit = (fn, base) => (b, p, ctx) => {
 };
 
 // ── Claude's strategy ───────────────────────────────────────────────────────────────────────
-import { CLAUDE } from './claude.js?v=20261024a';
+import { CLAUDE } from './claude.js?v=20261030a';
 
 export const STRATEGIES = {
   claude: CLAUDE,

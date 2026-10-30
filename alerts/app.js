@@ -17,7 +17,7 @@ const SAMPLE = { event: 'setup', id: '3f1c9a0b5d2e7f41', source: 'agzent/claude-
 function detail(e) {
   const tp = e.take_profit || [];
   switch (e.event) {
-    case 'setup': return `buy limit ${fmtP(e.order?.price)} until ${wib(e.order?.valid_until)} · SL ${fmtP(e.stop_loss)} · TP1 ${fmtP(tp[0]?.price)} · TP2 ${fmtP(tp[1]?.price)}`;
+    case 'setup': return `${e.side === 'short' ? 'sell' : 'buy'} limit ${fmtP(e.order?.price)} until ${wib(e.order?.valid_until)} · SL ${fmtP(e.stop_loss)} · TP1 ${fmtP(tp[0]?.price)} · TP2 ${fmtP(tp[1]?.price)}`;
     case 'entry': return `filled ${fmtP(e.fill?.price)} · SL ${fmtP(e.stop_loss)} · TP1 ${fmtP(tp[0]?.price)} · TP2 ${fmtP(tp[1]?.price)}`;
     case 'tp1': return `TP1 ${fmtP(e.tp1?.price)} · stop → ${fmtP(e.new_stop_loss)}`;
     case 'exit': return `closed ${fmtP(e.exit?.price)} · ${REASON[e.exit?.reason] || e.exit?.reason || ''}`;
@@ -47,11 +47,11 @@ function render(d) {
 
   const ev = [...d.events].reverse().slice(0, 60);
   $('#events').innerHTML = ev.length ? `<div class="tblwrap" style="max-height:520px;overflow:auto"><table class="tk sm" style="min-width:560px"><thead><tr><th class="l">Time (WIB)</th><th class="l">Token</th><th class="l">Event</th><th class="l">Details</th><th>bp</th></tr></thead><tbody>
-    ${ev.map(e => `<tr style="cursor:default"><td class="l">${esc(wib(e.sent_at))}</td><td class="l"><b>${esc(coin(e.symbol))}</b></td><td class="l"><span class="evt ${esc(e.event)}">${esc(e.event)}</span></td><td class="l" style="white-space:normal">${esc(detail(e))}</td><td class="${e.exit ? (e.exit.net_bp >= 0 ? 'pos' : 'neg') : ''}">${e.exit ? (e.exit.net_bp >= 0 ? '+' : '') + esc(e.exit.net_bp) : ''}</td></tr>`).join('')}</tbody></table></div>`
+    ${ev.map(e => `<tr style="cursor:default"><td class="l">${esc(wib(e.sent_at))}</td><td class="l"><b>${esc(coin(e.symbol))}</b> <span class="sd ${e.side === 'short' ? 's' : 'l'}">${e.side === 'short' ? 'S' : 'L'}</span></td><td class="l"><span class="evt ${esc(e.event)}">${esc(e.event)}</span></td><td class="l" style="white-space:normal">${esc(detail(e))}</td><td class="${e.exit ? (e.exit.net_bp >= 0 ? 'pos' : 'neg') : ''}">${e.exit ? (e.exit.net_bp >= 0 ? '+' : '') + esc(e.exit.net_bp) : ''}</td></tr>`).join('')}</tbody></table></div>`
     : `<div class="empty">No signals since the service started. Setups are rare — a few a week across ${esc(d.tokens.length)} tokens.</div>`;
   $('#open').innerHTML = d.open.length ? d.open.map(o => o.position
-    ? `<div class="calc" style="margin-bottom:8px"><span><b>${esc(coin(o.symbol))}</b> <span class="evt entry">in trade</span></span><span>entry ${esc(fmtP(o.position.entry))} · SL ${esc(fmtP(o.position.sl))}${o.position.tp1_hit ? ' · TP1 ✓' : ''}</span></div>`
-    : `<div class="calc" style="margin-bottom:8px"><span><b>${esc(coin(o.symbol))}</b> <span class="evt setup">limit</span></span><span>buy ${esc(fmtP(o.pending.price))} until ${esc(wib(o.pending.valid_until))}</span></div>`).join('')
+    ? `<div class="calc" style="margin-bottom:8px"><span><b>${esc(coin(o.symbol))}</b> <span class="evt entry">${o.position.side === -1 ? 'short' : 'long'}</span></span><span>entry ${esc(fmtP(o.position.entry))} · SL ${esc(fmtP(o.position.sl))}${o.position.tp1_hit ? ' · TP1 ✓' : ''}</span></div>`
+    : `<div class="calc" style="margin-bottom:8px"><span><b>${esc(coin(o.symbol))}</b> <span class="evt setup">${o.pending.side === -1 ? 'sell' : 'buy'} limit</span></span><span>${esc(fmtP(o.pending.price))} until ${esc(wib(o.pending.valid_until))}</span></div>`).join('')
     : '<div class="muted">No setup or trade open right now.</div>';
   const ex = [...d.events].reverse().find(e => e.event === 'setup');
   $('#example').textContent = JSON.stringify(ex || SAMPLE, null, 2); $('#exNote').textContent = ex ? `(latest real setup, ${coin(ex.symbol)})` : '(sample)';

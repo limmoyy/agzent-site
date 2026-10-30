@@ -23,7 +23,7 @@
 //   full spread through it. Built on data to Aug 2026 (+4.6 bp, 6 of 6 halves; market entry +3.2), then one look at the
 //   locked Sep–Oct 2026 holdout: 53 trades, +6.7 bp (gold +14.6, Nasdaq −1.5; 2× costs +3.7) vs the old 1m rule −2.9 bp.
 // Experimental either way: paper-trade it.
-import { STRATEGIES } from '../scanner/lab/engine.js?v=20261028a';
+import { STRATEGIES } from '../scanner/lab/engine.js?v=20261030a';
 import { nyOffset, ema, rsi, atr } from '../scanner/lab/ind.js';
 
 export const INSTR = {
