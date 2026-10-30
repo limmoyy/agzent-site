@@ -284,7 +284,7 @@ pre code{background:none;border:0;padding:0;font-size:inherit}
     <div>
       <div class="claude-badge">STEP 1 · TELEGRAM</div>
       <h2>Get the alerts on Telegram</h2>
-      <p>Open the bot with the invite link and press <b>Start</b>. Then pick tokens with <code>/tokens BTC ETH SOL</code> (default: all of them). Share this page — and the passphrase — only with people you want in; the owner sees who joins and can remove anyone.</p>
+      <p>Open the bot with the invite link and press <b>Start</b>. Every alert arrives as a <b>chart card</b> — the flush or squeeze candle, the entry / stop / target box — with the levels, a quality score and, after <code>/risk</code>, your own position size. Then pick tokens with <code>/tokens BTC ETH SOL</code> (default: all of them). Share this page — and the passphrase — only with people you want in; the owner sees who joins and can remove anyone.</p>
     </div>
     <div id="joinBox"></div>
   </div>
@@ -295,7 +295,11 @@ pre code{background:none;border:0;padding:0;font-size:inherit}
       <h2 class="sec" style="margin-top:18px">Bot commands</h2>
       <div class="calc" style="grid-template-columns:auto 1fr">
         <span><code>/tokens</code></span><span style="font-family:var(--body);text-align:left">which tokens · <code>/tokens BTC NEAR</code> · <code>/tokens all</code></span>
-        <span><code>/status</code></span><span style="font-family:var(--body);text-align:left">setups and trades open right now</span>
+        <span><code>/status</code></span><span style="font-family:var(--body);text-align:left">live dashboard: open trades in R, limits waiting, refresh button</span>
+        <span><code>/stats</code></span><span style="font-family:var(--body);text-align:left">the strategy's record: long vs short, best tokens, live trades</span>
+        <span><code>/chart</code></span><span style="font-family:var(--body);text-align:left">chart card of any token · <code>/chart SOL</code></span>
+        <span><code>/risk</code></span><span style="font-family:var(--body);text-align:left">your capital and risk per trade → every alert sizes the position · <code>/risk 1000 1</code></span>
+        <span><code>/demo</code></span><span style="font-family:var(--body);text-align:left">replays one real (simulated) trade, alert by alert</span>
         <span><code>/webhook</code></span><span style="font-family:var(--body);text-align:left">send every signal to your URL (step 2)</span>
         <span><code>/template</code></span><span style="font-family:var(--body);text-align:left">your own body format per event</span>
         <span><code>/stop</code></span><span style="font-family:var(--body);text-align:left">unsubscribe</span>
