@@ -1,4 +1,4 @@
-// Passphrase gate shared by /scanner, /forex and /alerts: the VPS snapshot is AES-256-GCM encrypted with a PBKDF2-SHA256 key
+// Passphrase gate shared by /scanner and /forex (/alerts has its own passphrase and its own copy): the VPS snapshot is AES-256-GCM encrypted with a PBKDF2-SHA256 key
 // derived from the passphrase; v2 snapshots are gzip-compressed before encryption. Decrypting it proves the passphrase.
 const te = new TextEncoder(), td = new TextDecoder();
 const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));

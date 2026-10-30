@@ -152,11 +152,11 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
 .err{color:var(--bad);font-size:13px}
 .empty{color:var(--muted);padding:22px;text-align:center;border:1px dashed var(--line2);border-radius:14px}
 
-/* claude */
+/* step badge */
 .hero{display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:linear-gradient(135deg,rgba(217,255,87,.09),rgba(122,106,102,.12));border:1px solid var(--line2);border-radius:20px;padding:20px 22px;margin:0 0 16px}
 .hero h2{font-size:24px;margin:0 0 4px}
 .hero p{margin:0;color:var(--muted);font-size:14px;max-width:640px}
-.claude-badge{display:inline-flex;align-items:center;gap:6px;font:700 11px/1 var(--mono);color:var(--lime);border:1px solid rgba(217,255,87,.4);border-radius:99px;padding:5px 9px;margin-bottom:8px;letter-spacing:.04em}
+.step-badge{display:inline-flex;align-items:center;gap:6px;font:700 11px/1 var(--mono);color:var(--lime);border:1px solid rgba(217,255,87,.4);border-radius:99px;padding:5px 9px;margin-bottom:8px;letter-spacing:.04em}
 .setup{background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:14px 15px;display:flex;flex-direction:column;gap:8px}
 .setup.position{border-color:rgba(217,255,87,.5)}
 .setup .hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -207,7 +207,7 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
 @media (max-width:560px){ .wrap{padding:0 16px} .hero{padding:16px} .tab{padding:8px 11px;font-size:13px} .fld input[type=number]{width:92px} }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
-/* forex */
+/* panels */
 .clock{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
 .phase{font:800 13px/1 var(--mono);padding:8px 11px;border-radius:10px;border:1px solid var(--line2);letter-spacing:.04em}
 .phase.open{color:var(--lime-ink);background:var(--lime);border-color:var(--lime)}
@@ -258,11 +258,10 @@ pre code{background:none;border:0;padding:0;font-size:inherit}
   <form id="gateForm" class="gatebox" autocomplete="off">
     <div class="gmark">🔔</div>
     <h1>Signal Alerts</h1>
-    <p>Telegram alerts and webhooks for Claude's crypto signals. Same passphrase as the scanner — it is checked in your browser.</p>
+    <p>Telegram alerts and webhooks for crypto signals. Enter the alerts passphrase — it is checked in your browser.</p>
     <input id="pw" type="password" placeholder="Passphrase" autocomplete="current-password" autofocus>
     <button id="gateBtn" type="submit">Unlock</button>
     <div class="gerr" id="gerr"></div>
-    <a class="gvault" href="/scanner/">→ Crypto scanner instead</a>
   </form>
 </div>
 
@@ -270,19 +269,18 @@ pre code{background:none;border:0;padding:0;font-size:inherit}
 <div class="wrap">
   <header class="top">
     <a class="brand" href="#"><span class="brandico">🔔</span><b>Signal Alerts</b><small>Agzent</small></a>
-    <nav class="sitenav" aria-label="Sections"><a href="/scanner/">Crypto</a><a href="/forex/">Forex</a><a href="/alerts/" aria-current="page">Alerts</a></nav>
-    <div class="toplinks"><span class="toplink" id="lastCheck">—</span><a class="toplink" href="/bugbounty/">Bug Bounty ↗</a><button class="toplink" id="lockBtn" type="button">Lock</button></div>
+    <div class="toplinks"><span class="toplink" id="lastCheck">—</span><button class="toplink" id="lockBtn" type="button">Lock</button></div>
   </header>
 
   <h1 class="title">Signal <em>Alerts</em></h1>
-  <p class="sub">Claude's <b>Flush &amp; Reclaim 1h</b> — the crypto strategy on the scanner page — runs on a server every hour and sends each step of every trade to Telegram and to webhooks: <b>setup → filled → TP1 → closed</b>. Longs on every token (an absorbed flush); shorts only on 18 large caps, after an extreme squeeze gets sold. Use the alerts to trade by hand, or point the webhook at an auto-trade platform or your own bot.</p>
+  <p class="sub"><b>Flush &amp; Reclaim 1h</b> runs on a server every hour and sends each step of every trade to Telegram and to webhooks: <b>setup → filled → TP1 → closed</b>. Longs on every token (an absorbed flush); shorts only on 18 large caps, after an extreme squeeze gets sold. Use the alerts to trade by hand, or point the webhook at an auto-trade platform or your own bot.</p>
   <div class="warn-banner"><b>Paper signals, research only.</b> Fills are what the strategy's own simulation on closed 1h Gate.io candles says happened; a real exchange can differ. On Binance 2022–2026 the strategy was barely positive and varied a lot by token and year. Start with a demo account and a small size; nothing here is financial advice.</div>
 
   <div class="stats" id="stats"></div>
 
   <div class="hero join">
     <div>
-      <div class="claude-badge">STEP 1 · TELEGRAM</div>
+      <div class="step-badge">STEP 1 · TELEGRAM</div>
       <h2>Get the alerts on Telegram</h2>
       <p>Open the bot with the invite link and press <b>Start</b>. Every alert arrives as a <b>chart card</b> — the flush or squeeze candle, the entry / stop / target box — with the levels, a quality score and, after <code>/risk</code>, your own position size. Then pick tokens with <code>/tokens BTC ETH SOL</code> (default: all of them). Share this page — and the passphrase — only with people you want in; the owner sees who joins and can remove anyone.</p>
     </div>
@@ -308,7 +306,7 @@ pre code{background:none;border:0;padding:0;font-size:inherit}
   </div>
 
   <div class="card docs" style="margin-top:14px">
-    <div class="claude-badge">STEP 2 · WEBHOOK (AUTO-TRADE / AGENT)</div>
+    <div class="step-badge">STEP 2 · WEBHOOK (AUTO-TRADE / AGENT)</div>
     <h2 class="sec" style="margin-top:8px">Send every signal to your own URL</h2>
     <p>In the bot: <code>/webhook https://your-url</code>. The bot answers with a <b>secret</b>; every signal for your tokens is then POSTed to that URL, signed with it. <code>/webhook test</code> sends a test. Only <code>https://</code> on a public address is accepted.</p>
     <div class="cols">
@@ -360,9 +358,9 @@ def verify(headers, raw: bytes, secret: str) -&gt; bool:
     <p class="note">The webhook only carries signals — it never touches anyone's exchange account. Your platform or bot holds your keys and decides what to trade.</p>
   </div>
 
-  <p class="note" style="margin:18px 0 40px">Signals come from <code>signal-hook</code> on the Agzent server: Gate.io USDT-perp 1h candles, checked ~75 s after every hourly close, same strategy code as the <a href="/scanner/">scanner</a>.</p>
+  <p class="note" style="margin:18px 0 40px">Signals come from <code>signal-hook</code> on the Agzent server: Gate.io USDT-perp 1h candles, checked ~75 s after every hourly close.</p>
 </div>
 </div>
-<script type="module" src="app.js?v=20261030a"></script>
+<script type="module" src="app.js?v=20261030b"></script>
 </body>
 </html>
