@@ -228,6 +228,7 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
 .playbook{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
 .playbook .pb{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;font-size:13px;color:var(--muted)}
 .playbook .pb b{display:block;color:var(--text);font-size:14px;margin-bottom:3px}
+.playbook .pb b:not(:first-child){display:inline;font-size:inherit;margin:0}
 .tfnote{font-size:12px;color:var(--muted)}
 .tfnote b{color:var(--text)}
 
@@ -298,7 +299,8 @@ pre code{background:none;border:0;padding:0;font-size:inherit}
         <span><code>/chart</code></span><span style="font-family:var(--body);text-align:left">chart card of any token · <code>/chart SOL</code></span>
         <span><code>/risk</code></span><span style="font-family:var(--body);text-align:left">your capital and risk per trade → every alert sizes the position · <code>/risk 1000 1</code></span>
         <span><code>/demo</code></span><span style="font-family:var(--body);text-align:left">replays one real (simulated) trade, alert by alert</span>
-        <span><code>/webhook</code></span><span style="font-family:var(--body);text-align:left">send every signal to your URL (step 2)</span>
+        <span><code>/autotrade</code></span><span style="font-family:var(--body);text-align:left">how to auto-trade on Gate.io: manual, AI agent (prompt file), platform, developer</span>
+        <span><code>/webhook</code></span><span style="font-family:var(--body);text-align:left">send every signal to your URL · <code>/webhook sample</code> tests it (step 3)</span>
         <span><code>/template</code></span><span style="font-family:var(--body);text-align:left">your own body format per event</span>
         <span><code>/stop</code></span><span style="font-family:var(--body);text-align:left">unsubscribe</span>
       </div>
@@ -306,17 +308,41 @@ pre code{background:none;border:0;padding:0;font-size:inherit}
   </div>
 
   <div class="card docs" style="margin-top:14px">
-    <div class="step-badge">STEP 2 · WEBHOOK (AUTO-TRADE / AGENT)</div>
+    <div class="step-badge">STEP 2 · AUTO-TRADE ON GATE.IO</div>
+    <h2 class="sec" style="margin-top:8px">Execute the signals on Gate.io</h2>
+    <p>The signals are computed on <b>Gate.io USDT-perp</b> candles, so Gate is where they execute at the same prices. Pick the way that fits you — in the bot, <code>/autotrade</code> walks through each one (in Bahasa Indonesia) and sends the agent prompt as a file.</p>
+    <div class="playbook" style="margin-top:10px">
+      <div class="pb"><b>🖐 Manual</b>Each <b>setup</b> alert: Gate → Futures → USDT-M → the coin · Isolated · <b>Limit + Post-only</b> at ENTRY · size = the <b>contracts</b> on the ⚡ Gate line (after <code>/risk</code>) · TP/SL = STOP and TP2. TP1 alert → stop to entry. Close / expired alerts → close / cancel.</div>
+      <div class="pb"><b>🤖 AI agent</b>Any coding agent (Codex, Hermes, OpenClaw, …) on a 24/7 server with a fixed IP. Give it the prompt below; it builds the executor, you register its URL with <code>/webhook</code>, test with <code>/webhook sample</code>, run on TestNet first.</div>
+      <div class="pb"><b>🧩 Platform</b>WunderTrading or 3Commas (both list Gate — check Gate Futures is available to you): make a signal bot on Gate Futures, register its URL, turn its JSON into <code>/template</code>s with the <code>{{gate_*}}</code> placeholders.</div>
+      <div class="pb"><b>👨‍💻 Developer</b>Every payload carries a <code>gate</code> object: contract, prices on Gate's tick, size in contracts from your <code>/risk</code>, leverage, break-even and ready APIv4 bodies in <code>gate.orders</code>. Details below.</div>
+    </div>
+    <h3>A safe Gate API key</h3>
+    <ul class="steps">
+      <li>A <b>sub-account</b> just for the bot, with only the money it may trade. Don't mix it with manual positions on the same contract.</li>
+      <li>API Management → create an <b>APIv4</b> key → <b>Perpetual Futures: read/write</b>, everything else off, <b>withdrawal off</b>.</li>
+      <li><b>IP whitelist</b> = your server's IP (or the platform's). Keep the key in a <code>.env</code> on the server — never in a chat, not even this bot.</li>
+      <li>Practice first: the <b>Futures TestNet APIKeys</b> tab gives TestNet keys (API <code>https://api-testnet.gateapi.io/api/v4</code>).</li>
+      <li>Futures settings: <b>single position mode</b>, <b>isolated</b> margin.</li>
+    </ul>
+    <h3>FOR AGENTIC USER — the prompt <button class="btn sm copy" id="copyPrompt" type="button">Copy prompt</button></h3>
+    <p>Paste this into your agent (or attach it as a file). It is a full build spec: webhook verification, the event → Gate order mapping, Gate APIv4 auth and endpoints, safety rails (dry-run, TestNet, kill switch) and a test plan.</p>
+    <pre id="agentPrompt" style="max-height:420px;overflow:auto;white-space:pre-wrap">—</pre>
+    <div class="warn-banner" style="margin-top:12px"><b>Timing:</b> the signal service evaluates at every <b>1h candle close</b>, so <code>entry</code>, <code>tp1</code> and <code>exit</code> arrive up to ~1 hour after the price did it. An executor must watch its own orders on Gate and place the stop the moment the entry fills — the later webhooks are confirmations and fallbacks.</div>
+  </div>
+
+  <div class="card docs" style="margin-top:14px">
+    <div class="step-badge">STEP 3 · WEBHOOK DETAILS</div>
     <h2 class="sec" style="margin-top:8px">Send every signal to your own URL</h2>
-    <p>In the bot: <code>/webhook https://your-url</code>. The bot answers with a <b>secret</b>; every signal for your tokens is then POSTed to that URL, signed with it. <code>/webhook test</code> sends a test. Only <code>https://</code> on a public address is accepted.</p>
+    <p>In the bot: <code>/webhook https://your-url</code>. The bot answers with a <b>secret</b>; every signal for your tokens is then POSTed to that URL, signed with it. <code>/webhook sample</code> sends one fake trade (setup → entry → tp1 → exit, <code>"mode": "test"</code>, prices 20 % from the market) to test your receiver. Only <code>https://</code> on a public address is accepted. All events of one trade share a <code>trade_id</code>.</p>
     <div class="cols">
       <div>
         <h3>What to do on each event</h3>
         <div class="tblwrap"><table class="tk sm"><thead><tr><th class="l">event</th><th class="l">when</th><th class="l">an auto-trader should</th></tr></thead><tbody>
-          <tr><td class="l"><span class="evt setup">setup</span></td><td class="l">a flush (long) or squeeze (short) candle closed</td><td class="l">place a post-only limit — <b>buy</b> when <code>side</code> is <code>long</code>, <b>sell</b> when <code>short</code> (<code>{{buy_sell}}</code>) — at <code>order.price</code> until <code>order.valid_until</code> (3 h)</td></tr>
-          <tr><td class="l"><span class="evt entry">entry</span></td><td class="l">the limit filled</td><td class="l">set the stop <code>stop_loss</code>, TP1 50 % and TP2 50 %</td></tr>
-          <tr><td class="l"><span class="evt tp1">tp1</span></td><td class="l">TP1 reached</td><td class="l">close 50 %, move the stop to <code>new_stop_loss</code> (break-even)</td></tr>
-          <tr><td class="l"><span class="evt exit">exit</span></td><td class="l">the trade ended</td><td class="l">close what is left (TP2, stop, break-even or the 24 h time stop)</td></tr>
+          <tr><td class="l"><span class="evt setup">setup</span></td><td class="l">a flush (long) or squeeze (short) candle closed</td><td class="l">place a post-only limit — <b>buy</b> when <code>side</code> is <code>long</code>, <b>sell</b> when <code>short</code> (<code>{{buy_sell}}</code>) — at <code>order.price</code> until <code>order.valid_until</code> (3 h) — on Gate: <code>gate.orders.entry</code> (<code>tif: poc</code>)</td></tr>
+          <tr><td class="l"><span class="evt entry">entry</span></td><td class="l">the limit filled</td><td class="l">stop + TP1 50 % + TP2 50 % (<code>gate.orders.stop_loss</code>, <code>tp1</code>, <code>tp2</code>) — if not already placed on its own fill</td></tr>
+          <tr><td class="l"><span class="evt tp1">tp1</span></td><td class="l">TP1 reached</td><td class="l">close 50 %, move the stop to <code>new_stop_loss</code> (break-even; <code>gate.orders.stop_loss</code>)</td></tr>
+          <tr><td class="l"><span class="evt exit">exit</span></td><td class="l">the trade ended</td><td class="l">close what is left (TP2, stop, break-even or the 24 h time stop; <code>gate.orders.close</code>) and cancel leftovers tagged <code>gate.order_text</code></td></tr>
           <tr><td class="l"><span class="evt cancel">cancel</span></td><td class="l">the limit expired</td><td class="l">cancel the open order</td></tr>
         </tbody></table></div>
         <h3>Headers</h3>
@@ -327,11 +353,11 @@ pre code{background:none;border:0;padding:0;font-size:inherit}
         <pre id="example"></pre>
       </div>
     </div>
-    <h3>Auto-trade platforms that want their own format</h3>
-    <p>Platforms such as 3Commas, WunderTrading or Cornix give you a webhook URL plus the JSON they expect. Copy that JSON from the platform, swap the values for placeholders and save one template per event — then only those events are sent, in that format. Check the platform's own docs for its exact fields; the line below is only an example.</p>
-    <pre><code>/template setup {"pair":"{{base}}_USDT","side":"{{buy_sell}}","order_type":"limit","price":{{entry}},"stop_loss":{{stop_loss}},"take_profit":{{tp2}}}
-/template exit  {"pair":"{{base}}_USDT","action":"close"}</code></pre>
-    <p>Placeholders: <code>{{event}}</code> <code>{{action}}</code> <code>{{symbol}}</code> <code>{{base}}</code> <code>{{side}}</code> <code>{{buy_sell}}</code> <code>{{close_side}}</code> <code>{{price}}</code> <code>{{entry}}</code> <code>{{stop_loss}}</code> <code>{{tp1}}</code> <code>{{tp2}}</code> <code>{{close_pct}}</code> <code>{{valid_until}}</code> <code>{{reason}}</code> <code>{{net_bp}}</code> <code>{{id}}</code> <code>{{time}}</code>. <code>/template</code> lists yours; <code>/template setup off</code> removes one.</p>
+    <h3>Platforms that want their own format</h3>
+    <p>Platforms such as WunderTrading or 3Commas give you a webhook URL plus the JSON they expect. Copy that JSON from the platform, swap the values for placeholders and save one template per event — then only those events are sent, in that format. Check the platform's own docs for its exact fields; the line below is only an example.</p>
+    <pre><code>/template setup {"pair":"{{gate_contract}}","side":"{{gate_side}}","order_type":"limit","price":"{{gate_entry}}","qty":"{{gate_size_abs}}","stop_loss":"{{gate_stop}}","take_profit":"{{gate_tp2}}"}
+/template exit  {"pair":"{{gate_contract}}","action":"close"}</code></pre>
+    <p>Placeholders: <code>{{event}}</code> <code>{{action}}</code> <code>{{symbol}}</code> <code>{{base}}</code> <code>{{side}}</code> <code>{{buy_sell}}</code> <code>{{close_side}}</code> <code>{{price}}</code> <code>{{entry}}</code> <code>{{stop_loss}}</code> <code>{{tp1}}</code> <code>{{tp2}}</code> <code>{{close_pct}}</code> <code>{{valid_until}}</code> <code>{{reason}}</code> <code>{{net_bp}}</code> <code>{{id}}</code> <code>{{time}}</code> <code>{{trade_id}}</code> <code>{{mode}}</code>; Gate units: <code>{{gate_contract}}</code> <code>{{gate_side}}</code> <code>{{gate_close_side}}</code> <code>{{gate_entry}}</code> <code>{{gate_stop}}</code> <code>{{gate_tp1}}</code> <code>{{gate_tp2}}</code> <code>{{gate_be}}</code> <code>{{gate_size}}</code> <code>{{gate_size_abs}}</code> <code>{{gate_tp1_size}}</code> <code>{{gate_tp2_size}}</code> <code>{{gate_leverage}}</code> <code>{{gate_text}}</code>. <code>/template</code> lists yours; <code>/template setup off</code> removes one.</p>
     <div class="cols">
       <div><h3>Verify the signature — Node.js</h3><pre><code>import { createHmac, timingSafeEqual } from 'node:crypto';
 // raw = the request body exactly as received (a string)
@@ -361,6 +387,6 @@ def verify(headers, raw: bytes, secret: str) -&gt; bool:
   <p class="note" style="margin:18px 0 40px">Signals come from <code>signal-hook</code> on the Agzent server: Gate.io USDT-perp 1h candles, checked ~75 s after every hourly close.</p>
 </div>
 </div>
-<script type="module" src="app.js?v=20261030b"></script>
+<script type="module" src="app.js?v=20261030c"></script>
 </body>
 </html>
