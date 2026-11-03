@@ -274,10 +274,10 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
       <div>
         <div class="claude-badge">✦ CLAUDE FX · PULLBACK</div>
         <h2>Gold &amp; Nasdaq right now</h2>
-        <p>Trade with the trend, enter on the dip: long when price is above EMA 100 and RSI 14 dips under 40, short when it is below EMA 100 and RSI rises over 60. <b>Intraday</b> (default): entries in the London + New York morning, out within 2 hours, stop 0.6 %, flat before the daily close. <b>Swing</b>: target 1 %, stop 1.5 %, up to 24 h. Both were researched on 5m.</p>
+        <p>Trade with the trend, enter on the dip: long when price is above EMA 100 and RSI dips, short when it is below EMA 100 and RSI pops. <b>Active</b> (default): RSI 8 under 35 / over 65, up to 3 positions at once — ≈ 2.3 trades a day per market. <b>Intraday</b> (classic): RSI 14 under 40 / over 60, one at a time — ≈ 0.6 a day. Both enter in the London + New York morning, close each trade within 2 hours, stop 0.6 %, flat before the daily close. <b>Swing</b>: target 1 %, stop 1.5 %, up to 24 h. All researched on 5m.</p>
       </div>
       <div class="ctrls" style="margin:0">
-        <div class="fld"><span>Mode</span><div class="seg" id="modeSeg" role="group" aria-label="Mode"><button type="button" data-v="intraday" aria-pressed="true">Intraday</button><button type="button" data-v="trend" aria-pressed="false">Swing</button></div></div>
+        <div class="fld"><span>Mode</span><div class="seg" id="modeSeg" role="group" aria-label="Mode"><button type="button" data-v="active" aria-pressed="true">Active</button><button type="button" data-v="intraday" aria-pressed="false">Intraday</button><button type="button" data-v="trend" aria-pressed="false">Swing</button></div></div>
         <div class="fld"><span>Timeframe</span><div class="seg" id="tfSeg" role="group" aria-label="Timeframe"><button type="button" data-v="1m" aria-pressed="false">1m</button><button type="button" data-v="5m" aria-pressed="true">5m</button><button type="button" data-v="15m" aria-pressed="false">15m</button></div></div>
         <button class="btn pri" id="scanBtn" type="button">✦ Refresh desk</button>
       </div>
@@ -345,12 +345,12 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
       <div>
         <div class="claude-badge">✦ STRATEGY CHECK</div>
         <h2>Is it still working?</h2>
-        <p>The current tactic on the research period, the last 2 months and the last month, next to the swing tactic. Recent months come straight from the research's data source (Binance gold and QQQ perps, 1m, up to yesterday), downloaded and simulated in your browser with the costs from the Backtest tab.</p>
+        <p>Each tactic — Active (default), classic intraday, swing and the 1m mode — on the research period, the last 2 months and the last month, with how many trades it takes a day. Recent months come straight from the research's data source (Binance gold and QQQ perps, 1m, up to yesterday), downloaded and simulated in your browser with the costs from the Backtest tab.</p>
       </div>
       <div class="ctrls" style="margin:0"><button class="btn pri" id="ckRun" type="button">✦ Run check</button></div>
     </div>
     <div class="prog" id="ckProg"><i></i></div>
-    <div id="ckOut"><div class="empty">Press <b>Run check</b>. It downloads about two months of 1-minute candles for gold and Nasdaq (≈ 5–8 MB) and simulates both tactics.</div></div>
+    <div id="ckOut"><div class="empty">Press <b>Run check</b>. It downloads about two months of 1-minute candles for gold and Nasdaq (≈ 5–8 MB) and simulates every tactic.</div></div>
   </section>
 
   <div class="foot">Gold and Nasdaq-100 index prices from Gate.io (public API) · charts by TradingView Lightweight Charts · everything runs in your browser · research only, not financial advice.</div>
@@ -358,6 +358,6 @@ details.more summary{cursor:pointer;color:var(--muted);font-size:13px}
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="../scanner/vendor/lightweight-charts.standalone.production.js"></script>
-<script type="module" src="app.js?v=20261030a"></script>
+<script type="module" src="app.js?v=20261103a"></script>
 </body>
 </html>

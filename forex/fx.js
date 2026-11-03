@@ -22,8 +22,17 @@
 //   5m signal executed on 1m: a limit one 1m-ATR better than the 5m close, valid 30 min, filled only once price trades a
 //   full spread through it. Built on data to Aug 2026 (+4.6 bp, 6 of 6 halves; market entry +3.2), then one look at the
 //   locked Sep–Oct 2026 holdout: 53 trades, +6.7 bp (gold +14.6, Nasdaq −1.5; 2× costs +3.7) vs the old 1m rule −2.9 bp.
+// More trades (2026-11-03, scripts ~/research/fx/m2): the classic rule fires ~0.6 times a day per market. Its edge sits
+//   in deep dips: looser RSI thresholds (RSI 14 < 45, < 50, "always trade the trend side") fall to ≈ 0, so a dip has to stay
+//   rare. What adds trades without diluting the dip: a shorter RSI (8) with a deeper bar (35), and up to 3 positions at once
+//   with at most one new entry per 10 min (the dip often keeps going after the first entry). Picked on data before
+//   Sep 2026 from a smooth region (RSI 6–9 × 30–38 × gap 10–15 all ≈ +3 bp): 1470 trades, 2.3 a day per market, +3.1 bp,
+//   6 of 6 halves, daily t 2.15 (classic: 396 trades, +3.2 bp, daily t 1.76). One look at the locked Sep 1 – Nov 1 2026
+//   test: 254 trades (2.4 a day) +1.7 bp (gold +4.0, Nasdaq −1.0; classic 68 trades +7.4 bp), ≈ 0 at 2× costs. Total bp
+//   per day about the same as classic in the test, 3.6× as many trades, bumpier weeks. Same rules on silver, platinum and
+//   SPY (never used to build them): +2 to +6 bp before costs, ≈ 0 after, so more markets is no shortcut.
 // Experimental either way: paper-trade it.
-import { STRATEGIES } from '../scanner/lab/engine.js?v=20261030a';
+import { STRATEGIES, run } from '../scanner/lab/engine.js?v=20261030a';
 import { nyOffset, ema, rsi, atr } from '../scanner/lab/ind.js';
 
 export const INSTR = {
@@ -119,21 +128,33 @@ export const FX_TREND = {
  *  closed after hold_min minutes or at flat_m ET, whichever first, with a protective stop. No fixed target: in the
  *  research, targets and tight brackets cut the trades that needed time to work. */
 function intraday(b, p, ctx) {
-  const n = b.c.length, e = ema(b.c, p.ema_n), r = rsi(b.c, p.rsi_n), tfMin = ctx.tfMin;
+  const n = b.c.length, e = ema(b.c, p.ema_n), r = rsi(b.c, p.rsi_n), tfMin = ctx.tfMin, gap = (p.gap_min || 0) * 60;
   const le = bools(n), se = bools(n), lx = bools(n), sx = bools(n), sl_p = nanArr(n);
+  let last = -Infinity; // time of the last signal: with gap_min, the next one must come at least that much later
   for (let i = 1; i < n; i++) {
     const k = etClock(b.t[i]), c = b.c[i];
     if (k.m + tfMin >= p.flat_m && k.m < p.flat_m + tfMin) { lx[i] = sx[i] = 1; continue; }
     if (!(k.m >= p.win0 && k.m < p.win1)) continue;
-    if (c > e[i] && r[i] < p.rsi_lo) { le[i] = 1; sl_p[i] = c * (1 - p.stop_pct); }
-    else if (c < e[i] && r[i] > 100 - p.rsi_lo) { se[i] = 1; sl_p[i] = c * (1 + p.stop_pct); }
+    const side = c > e[i] && r[i] < p.rsi_lo ? 1 : c < e[i] && r[i] > 100 - p.rsi_lo ? -1 : 0;
+    if (!side || b.t[i] - last < gap) continue;
+    last = b.t[i];
+    if (side > 0) le[i] = 1; else se[i] = 1;
+    sl_p[i] = c * (1 - side * p.stop_pct);
   }
-  return { le, se, lx, sx, sl_p, maxHold: Math.max(1, Math.round(p.hold_min / tfMin)), reverse: false };
+  return { le, se, lx, sx, sl_p, maxHold: Math.max(1, Math.round(p.hold_min / tfMin)), reverse: false, maxPos: Math.max(1, Math.round(p.max_pos || 1)) };
 }
 export const FX_INTRADAY = {
   title: 'Claude FX · Intraday Pullback (out within 2 h)', tf: '5m', tfs: ['1m', '5m', '15m'],
-  params: { ema_n: 100, rsi_n: 14, rsi_lo: 40, stop_pct: 0.006, hold_min: 120, win0: 120, win1: 780, flat_m: 1005 },
-  help: { stop_pct: 'Protective stop (fraction of price)', hold_min: 'Close after this many minutes', win0: 'Entries from (minutes after midnight ET; 120 = 02:00)', win1: 'Entries until (780 = 13:00 ET)', flat_m: 'Close everything at (1005 = 16:45 ET)' },
+  params: { ema_n: 100, rsi_n: 14, rsi_lo: 40, stop_pct: 0.006, hold_min: 120, max_pos: 1, gap_min: 0, win0: 120, win1: 780, flat_m: 1005 },
+  help: { stop_pct: 'Protective stop (fraction of price)', hold_min: 'Close after this many minutes', max_pos: 'Most positions open at once (each with its own stop and time exit)', gap_min: 'At most one new signal per this many minutes', win0: 'Entries from (minutes after midnight ET; 120 = 02:00)', win1: 'Entries until (780 = 13:00 ET)', flat_m: 'Close everything at (1005 = 16:45 ET)' },
+  signals: intraday,
+};
+/** Claude FX · Active: the intraday rule tuned for more trades — RSI 8 under 35 (over 65 for shorts) instead of RSI 14
+ *  under 40, up to 3 positions at once, at most one new entry per 10 minutes. Same window, stop and exits. */
+export const FX_ACTIVE = {
+  title: 'Claude FX · Active (more trades, up to 3 at once)', tf: '5m', tfs: ['5m'],
+  params: { ...FX_INTRADAY.params, rsi_n: 8, rsi_lo: 35, max_pos: 3, gap_min: 10 },
+  help: { ...FX_INTRADAY.help, rsi_n: 'RSI length (8 reacts to shorter dips than 14)', rsi_lo: 'Long when RSI < this (short when > 100 − this)' },
   signals: intraday,
 };
 
@@ -225,6 +246,7 @@ function orb(b, p, ctx) {
   return { le, se, lx, sx, sl_p, tp_p, maxHold: 0, reverse: false };
 }
 export const FX_STRATS = {
+  active: FX_ACTIVE,
   intraday: FX_INTRADAY,
   intraday1m: FX_INTRADAY_1M,
   trend: FX_TREND,
@@ -242,7 +264,7 @@ export function trendState(b, p) {
   const k = b.forming ? b.c.length - 2 : b.c.length - 1;
   if (k < p.ema_n) return null;
   const e = ema(b.c, p.ema_n), r = rsi(b.c, p.rsi_n), c = b.c[k], up = c > e[k];
-  const want = up ? `RSI under ${p.rsi_lo}` : `RSI over ${100 - p.rsi_lo}`;
+  const want = up ? `RSI ${p.rsi_n} under ${p.rsi_lo}` : `RSI ${p.rsi_n} over ${100 - p.rsi_lo}`;
   const armed = up ? r[k] < p.rsi_lo : r[k] > 100 - p.rsi_lo;
   return { up, ema: e[k], rsi: r[k], price: c, want, armed, gapPct: (c / e[k] - 1) * 100, rsiNeed: up ? p.rsi_lo : 100 - p.rsi_lo };
 }
@@ -251,6 +273,30 @@ export function trendState5(b1, p) {
   const b5 = resample(b1, 5);
   b5.forming = b1.forming || b5.t[b5.t.length - 1] + 300 > b1.t[b1.t.length - 1] + 60;
   return trendState(b5, p);
+}
+
+/** Backtest with up to sig.maxPos positions at once. Slot 1 sees every signal; each later slot sees only the signals the
+ *  slots before it could not take (they were in a trade). This is exactly "the first free slot takes the signal", since a
+ *  slot's trades never depend on the slots after it. Each position has its own stop and time exit. One slot = run(). */
+export function runFx(bars, sig, opt = {}) {
+  const K = Math.max(1, sig.maxPos || 1);
+  if (K === 1) { const r = run(bars, sig, opt); r.live.positions = r.live.position ? [r.live.position] : []; return r; }
+  let cur = sig, pending = null;
+  const trades = [], orders = [], positions = [];
+  for (let k = 0; k < K; k++) {
+    const r = run(bars, cur, opt), taken = new Set(r.trades.map(x => x.sigBar));
+    for (const o of r.orders) if (o.status !== 'filled') taken.add(o.bar); // an unfilled limit kept this slot busy too
+    if (r.live.pending) { taken.add(r.live.pending.sigBar); if (!pending) pending = { ...r.live.pending, slot: k }; }
+    if (r.live.position) positions.push({ ...r.live.position, slot: k });
+    trades.push(...r.trades.map(x => ({ ...x, slot: k }))); orders.push(...r.orders);
+    const nx = { ...cur };
+    for (const key of ['le', 'se']) if (cur[key]) { const a = cur[key].slice(); for (const i of taken) a[i] = 0; nx[key] = a; }
+    for (const key of ['lel', 'sel', 'les', 'ses']) if (cur[key]) { const a = cur[key].slice(); for (const i of taken) a[i] = NaN; nx[key] = a; }
+    cur = nx;
+  }
+  trades.sort((a, b) => a.ei - b.ei || a.slot - b.slot);
+  positions.sort((a, b) => a.ei - b.ei);
+  return { trades, orders, live: { position: positions[positions.length - 1], positions, pending } };
 }
 
 /** Broker CFD costs → engine fractions. spread in price units (round trip), commission in $ per lot round trip.
