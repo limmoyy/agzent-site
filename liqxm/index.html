@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.gateio.ws; base-uri 'none'">
+<title>liqxm desk</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%232A2220'/><path d='M12 40h14v-14h12v14h14' fill='none' stroke='%23D9FF57' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blush:#E0D1D1;--espresso:#2A2220;--lime:#D9FF57;--lime-ink:#1E2400;
+  --bg:#17110F;--panel:#211917;--panel2:#2A2220;--line:rgba(224,209,209,.12);--line2:rgba(224,209,209,.22);
+  --text:#F3ECEA;--muted:#B5A6A2;--dim:#857571;--ok:#7EE08A;--warn:#FFC857;--bad:#FF7A6B;--info:#8EC5FF;
+  --r:16px;--max:1300px;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;--body:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 var(--body);min-height:100vh;
+  background-image:radial-gradient(1100px 560px at 85% -10%,rgba(217,255,87,.06),transparent 60%),radial-gradient(900px 500px at -10% 8%,rgba(122,106,102,.16),transparent 60%)}
+button,input,select{font:inherit;color:inherit}
+h1,h2{font-family:var(--display);letter-spacing:-.03em;line-height:1.05;margin:0}
+.mono{font-family:var(--mono)} .muted{color:var(--muted)} .dim{color:var(--dim)}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 16px}
+#gate{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(1000px 500px at 50% -10%,rgba(217,255,87,.09),transparent 60%),var(--bg)}
+#gate form{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line2);border-radius:20px;padding:26px}
+#gate h1{font-size:30px;margin-bottom:6px}
+#gate input{width:100%;margin:16px 0 10px;padding:12px 14px;border-radius:12px;border:1px solid var(--line2);background:var(--panel2);outline:none}
+#gate input:focus{border-color:var(--lime)}
+.btn{border:0;border-radius:12px;padding:11px 16px;font-weight:700;cursor:pointer;background:var(--panel2);border:1px solid var(--line2)}
+.btn.primary{background:var(--lime);color:var(--lime-ink);border-color:transparent;width:100%}
+.btn:disabled{opacity:.5;cursor:wait}
+#gateErr{color:var(--bad);font-size:13px;min-height:20px;margin-top:8px}
+header{padding:22px 0 10px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
+header h1{font-size:34px}
+.badge{display:inline-block;font:700 11px/1 var(--mono);letter-spacing:.06em;padding:5px 8px;border-radius:999px;background:rgba(217,255,87,.12);color:var(--lime);vertical-align:middle;margin-left:8px}
+.clock{font-size:13px;color:var(--muted);text-align:right}
+.clock b{color:var(--text)}
+.notice{margin:6px 0 18px;padding:14px 16px;border-radius:var(--r);border:1px dashed rgba(255,200,87,.45);background:rgba(255,200,87,.06);font-size:14px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.seg{display:inline-flex;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:3px;gap:2px}
+.seg button{border:0;background:none;padding:7px 14px;border-radius:9px;font-weight:700;font-size:13px;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--lime);color:var(--lime-ink)}
+.ladder{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.tf{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0}
+.tf .n{font:800 22px/1 var(--display)}
+.tf .s{font-size:12px;color:var(--muted);margin-top:6px;overflow-wrap:anywhere}
+.tf.off{opacity:.45}
+.tf .ok{color:var(--ok)} .tf .no{color:var(--dim)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+#chBox{width:100%}
+.chart-legend{position:absolute;left:10px;top:8px;z-index:3;font:12px var(--mono);color:var(--muted);pointer-events:none}
+.chart-legend .lg-o{color:var(--text)}
+footer{padding:22px 0 40px;font-size:12px;color:var(--dim)}
+@media (max-width:760px){.ladder{grid-template-columns:repeat(3,minmax(0,1fr))} header h1{font-size:28px} .clock{text-align:left}}
+</style>
+</head>
+<body>
+<div id="gate">
+  <form id="gateForm" autocomplete="off">
+    <h1>liqxm desk</h1>
+    <div class="muted">Halaman privat. Masukkan passphrase.</div>
+    <input id="pw" type="password" placeholder="passphrase" aria-label="Passphrase" autocomplete="current-password">
+    <button class="btn primary" id="gateBtn" type="submit">Buka</button>
+    <div id="gateErr" role="alert"></div>
+  </form>
+</div>
+
+<main id="app" hidden>
+  <div class="wrap">
+    <header>
+      <div><h1>liqxm desk<span class="badge">PREVIEW</span></h1><div class="muted" id="sub">FVG · liqxm · OB · sweep berjenjang 5m → 1s</div></div>
+      <div class="clock" id="clock"></div>
+    </header>
+    <div class="notice"><b>Preview.</b> Engine liqxm lagi diuji bar-per-bar lawan script Pine. Skor 1–100, setup, entry/SL/TP 1:4, dan backtest muncul di sini begitu lolos uji. Yang aktif sekarang: data live Gate.io untuk semua timeframe.</div>
+    <div class="bar">
+      <div class="seg" id="instSeg" role="group" aria-label="Instrumen"><button data-v="XAU" aria-pressed="true">XAUUSD</button><button data-v="NAS" aria-pressed="false">NAS100</button></div>
+      <button class="btn" id="reload">Muat ulang</button>
+      <span class="muted" id="status" aria-live="polite"></span>
+    </div>
+    <div class="ladder" id="ladder"></div>
+    <div class="bar"><div class="seg" id="tfSeg" role="group" aria-label="Timeframe chart"></div></div>
+    <div class="panel"><div id="chBox"></div></div>
+    <footer>Data: Gate.io USDT perp / index (bisa beda beberapa poin dari harga broker). Bukan saran keuangan. <button class="btn" id="lockBtn" style="padding:5px 10px;font-size:12px;margin-left:8px">Kunci</button></footer>
+  </div>
+</main>
+<script src="../scanner/vendor/lightweight-charts.standalone.production.js"></script>
+<script type="module" src="app.js?v=20261119a"></script>
+</body>
+</html>
